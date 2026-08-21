@@ -1,0 +1,24 @@
+# Project TODO
+
+- [x] Build industrial site dashboard with CSV upload for `id`, `name`, `lat`, `lon`.
+- [x] Add date/time and heat-threshold controls.
+- [x] Add secure server-side FortyGuard proxy; never expose the API key to the browser.
+- [x] Add Live/Demo mode banner that is always visible.
+- [x] Implement heatmap analysis with bounded asynchronous polling and graceful API errors.
+- [x] Implement site risk scoring and ranking using peak temperature, exceedance hours, and persistence hours.
+- [x] Use exact risk labels: Critical, High, Moderate, Low.
+- [x] Add sortable risk-ranking table with color-coded tiers.
+- [x] Add interactive Google Maps heatmap overlay with clickable site markers.
+- [x] Add explainable risk cards showing formula inputs and plain-language recommendations.
+- [x] Use exact anomaly label: Anomaly Detected.
+- [x] Implement IQR or Z-score anomaly detection over heatmap tile values.
+- [x] Add compliance governance for OSHA 35 °C and UAE 45 °C examples.
+- [x] Add compliance matrix and summary dashboard.
+- [ ] Add site/industry metadata and recommended-action tracking.
+- [x] Add CSV and PDF export with metadata and limitations disclaimer.
+- [x] Persist analysis runs, sites, results, and compliance flags in the database.
+- [ ] Add assessment-history comparison view.
+- [x] Add built-in LLM executive summary that is exactly 3 sentences after each run.
+- [x] Add tests for scoring, anomaly detection, validation, compliance, export metadata, and LLM sentence-count enforcement.
+- [x] Verify UI states, responsive layout, accessibility, and browser console/network errors.
+- [x] Save a final checkpoint after all requested features and tests are complete.

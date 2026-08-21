@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { decimal, int, json, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -25,4 +25,24 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+export const assessments = mysqlTable("assessments", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  mode: mysqlEnum("mode", ["demo", "live"]).notNull(),
+  analyzedAt: timestamp("analyzedAt").defaultNow().notNull(),
+  startDate: varchar("startDate", { length: 32 }).notNull(),
+  startTime: varchar("startTime", { length: 16 }).notNull(),
+  thresholdC: decimal("thresholdC", { precision: 6, scale: 2 }).notNull(),
+  siteCount: int("siteCount").notNull(),
+  criticalCount: int("criticalCount").notNull(),
+  highCount: int("highCount").notNull(),
+  anomalyCount: int("anomalyCount").notNull(),
+  complianceCount: int("complianceCount").notNull(),
+  summary: text("summary"),
+  sitesJson: json("sitesJson").notNull(),
+  resultsJson: json("resultsJson").notNull(),
+  flagsJson: json("flagsJson").notNull(),
+});
+
+export type Assessment = typeof assessments.$inferSelect;
+export type InsertAssessment = typeof assessments.$inferInsert;
