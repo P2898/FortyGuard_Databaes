@@ -33,6 +33,8 @@ export const assessments = mysqlTable("assessments", {
   startDate: varchar("startDate", { length: 32 }).notNull(),
   startTime: varchar("startTime", { length: 16 }).notNull(),
   thresholdC: decimal("thresholdC", { precision: 6, scale: 2 }).notNull(),
+  industry: varchar("industry", { length: 120 }).notNull().default("Industrial operations"),
+  operationalContext: text("operationalContext"),
   siteCount: int("siteCount").notNull(),
   criticalCount: int("criticalCount").notNull(),
   highCount: int("highCount").notNull(),
@@ -42,6 +44,7 @@ export const assessments = mysqlTable("assessments", {
   sitesJson: json("sitesJson").notNull(),
   resultsJson: json("resultsJson").notNull(),
   flagsJson: json("flagsJson").notNull(),
+  actionsJson: json("actionsJson"),
 });
 
 export type Assessment = typeof assessments.$inferSelect;

@@ -14,10 +14,10 @@
 - [x] Implement IQR or Z-score anomaly detection over heatmap tile values.
 - [x] Add compliance governance for OSHA 35 °C and UAE 45 °C examples.
 - [x] Add compliance matrix and summary dashboard.
-- [ ] Add site/industry metadata and recommended-action tracking.
+- [x] Add site/industry metadata and recommended-action tracking.
 - [x] Add CSV and PDF export with metadata and limitations disclaimer.
 - [x] Persist analysis runs, sites, results, and compliance flags in the database.
-- [ ] Add assessment-history comparison view.
+- [x] Add assessment-history comparison view.
 - [x] Add built-in LLM executive summary that is exactly 3 sentences after each run.
 - [x] Add tests for scoring, anomaly detection, validation, compliance, export metadata, and LLM sentence-count enforcement.
 - [x] Verify UI states, responsive layout, accessibility, and browser console/network errors.

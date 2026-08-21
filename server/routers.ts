@@ -8,7 +8,7 @@ import { listAssessments, saveAssessment } from "./assessmentDb";
 import { demoHeatmap, SiteInput, scoreSite, detectAnomalies } from "./heat";
 
 const siteSchema = z.object({ id: z.string().min(1), name: z.string().min(1), lat: z.number().min(-90).max(90), lon: z.number().min(-180).max(180) });
-const analysisSchema = z.object({ sites: z.array(siteSchema).min(1).max(500), startDate: z.string().min(8), startTime: z.string().min(4), thresholdC: z.number().min(0).max(80), mode: z.enum(["demo", "live"]).default("demo") });
+const analysisSchema = z.object({ sites: z.array(siteSchema).min(1).max(500), startDate: z.string().min(8), startTime: z.string().min(4), thresholdC: z.number().min(0).max(80), mode: z.enum(["demo", "live"]).default("demo"), industry: z.string().default("Industrial operations"), operationalContext: z.string().optional() });
 
 async function callFortyGuard(input: z.infer<typeof analysisSchema>) {
   const key = process.env.FORTYGUARD_API_KEY;
@@ -58,7 +58,7 @@ export const appRouter = router({
   heat: router({
     analyze: publicProcedure.input(analysisSchema).mutation(async ({ input, ctx }) => {
       const output = await callFortyGuard(input), summary = await generateBrief(output.results, input.thresholdC), flags = output.results.flatMap(result => result.complianceFlags.filter(flag => flag.triggered));
-      if (ctx.user) await saveAssessment({ userId: ctx.user.id, mode: input.mode, startDate: input.startDate, startTime: input.startTime, thresholdC: String(input.thresholdC), siteCount: output.results.length, criticalCount: output.results.filter(result => result.riskTier === "Critical").length, highCount: output.results.filter(result => result.riskTier === "High").length, anomalyCount: output.results.filter(result => result.anomalyDetected).length, complianceCount: flags.length, summary, sitesJson: input.sites, resultsJson: output.results, flagsJson: flags });
+      if (ctx.user) await saveAssessment({ userId: ctx.user.id, mode: input.mode, startDate: input.startDate, startTime: input.startTime, thresholdC: String(input.thresholdC), industry: input.industry, operationalContext: input.operationalContext, siteCount: output.results.length, criticalCount: output.results.filter(result => result.riskTier === "Critical").length, highCount: output.results.filter(result => result.riskTier === "High").length, anomalyCount: output.results.filter(result => result.anomalyDetected).length, complianceCount: flags.length, summary, sitesJson: input.sites, resultsJson: output.results, flagsJson: flags, actionsJson: output.results.map(result => ({ siteId: result.id, action: result.recommendation, status: "pending", createdAt: new Date().toISOString() })) });
       return { ...output, summary, mode: input.mode, analyzedAt: new Date().toISOString() };
     }),
     history: publicProcedure.query(async ({ ctx }) => ctx.user ? listAssessments(ctx.user.id) : []),
