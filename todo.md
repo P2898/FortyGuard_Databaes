@@ -23,3 +23,4 @@
 - [x] Verify UI states, responsive layout, accessibility, and browser console/network errors.
 - [x] Save a final checkpoint after all requested features and tests are complete.
 - [x] Safely publish the project source to `https://github.com/P2898/FortyGuard_Databaes` while excluding confidential data and verifying the remote contents.
+- [ ] Push the current project README to `P2898/FortyGuard_Databaes` after a confidential-content review.
