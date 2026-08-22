@@ -22,4 +22,4 @@
 - [x] Add tests for scoring, anomaly detection, validation, compliance, export metadata, and LLM sentence-count enforcement.
 - [x] Verify UI states, responsive layout, accessibility, and browser console/network errors.
 - [x] Save a final checkpoint after all requested features and tests are complete.
-- [ ] Safely publish the project source to `https://github.com/P2898/FortyGuard_Databaes` while excluding confidential data and verifying the remote contents.
+- [x] Safely publish the project source to `https://github.com/P2898/FortyGuard_Databaes` while excluding confidential data and verifying the remote contents.
