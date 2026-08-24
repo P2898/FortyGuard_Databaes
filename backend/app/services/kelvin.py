@@ -30,10 +30,20 @@ def match_intent(user_input: str) -> dict:
     if any(word in text for word in ["riskiest", "most dangerous", "highest risk", "worst site"]):
         return {"intent": "riskiest_site", "params": {}, "confidence": 0.95}
 
-    # Pattern 3: "What's the coolest route from [A] to [B]?"
-    route_match = re.search(r"(?:coolest|best|hottest)\s+route\s+(?:from|between)\s+(.+?)\s+(?:to|and)\s+(.+?)(?:\?|$)", text)
+    # Pattern 3: Route requests —多种 phrasings
+    route_match = re.search(r"(?:coolest|best|hottest|fastest|shortest|quickest)\s+route\s+(?:from|between)\s+(.+?)\s+(?:to|and)\s+(.+?)(?:\?|$)", text)
     if route_match:
         return {"intent": "coolest_route", "params": {"origin": route_match.group(1).strip(), "destination": route_match.group(2).strip()}, "confidence": 0.85}
+
+    # Pattern 3b: "I want to go from A to B", "get me from A to B", "take me from A to B", "go from A to B"
+    go_match = re.search(r"(?:i\s+(?:want|need|would like)\s+to\s+)?(?:go|get|take|send|route|drive|walk|head)\s+(?:me\s+)?(?:from\s+)?(.+?)\s+(?:to|->|\\u2192)\s+(.+?)(?:\?|$)", text)
+    if go_match:
+        return {"intent": "coolest_route", "params": {"origin": go_match.group(1).strip(), "destination": go_match.group(2).strip()}, "confidence": 0.8}
+
+    # Pattern 3c: "plan route from A to B"
+    plan_match = re.search(r"plan\s+(?:a\s+)?(?:route|trip|path)\s+(?:from|between)\s+(.+?)\s+(?:to|and)\s+(.+?)(?:\?|$)", text)
+    if plan_match:
+        return {"intent": "coolest_route", "params": {"origin": plan_match.group(1).strip(), "destination": plan_match.group(2).strip()}, "confidence": 0.85}
 
     # Pattern 4: "What did heat cost us today?"
     if any(word in text for word in ["cost", "expense", "p&l", "financial", "money", "dollars"]):
@@ -79,11 +89,14 @@ def phrase_response(intent: str, data: dict, user_input: str = "") -> str:
         return f"The riskiest site right now is {site} at {risk} risk ({temp}°C). It requires immediate attention."
 
     elif intent == "coolest_route":
-        origin = data.get("origin", "origin")
-        dest = data.get("destination", "destination")
+        origin = data.get("origin_name", data.get("origin", "origin"))
+        dest = data.get("dest_name", data.get("destination", "destination"))
         temp_delta = data.get("temp_delta_f", "N/A")
         time_delta = data.get("time_delta_min", "N/A")
-        return f"The coolest route from {origin} to {dest} is {temp_delta}°F cooler but {time_delta} minutes longer than the fastest route."
+        has_action = "action" in data
+        if has_action:
+            return f"Got it! Routing from {origin} to {dest}. The coolest route is about {temp_delta}°F cooler than the fastest. Opening the Route Planner now — you'll see both paths on the map with the pegman at your starting point."
+        return f"The coolest route from {origin} to {dest} is about {temp_delta}°F cooler but {time_delta} minutes longer than the fastest route."
 
     elif intent == "heat_cost":
         total = data.get("total_cost", 0)

@@ -11,7 +11,13 @@ function tempToColor(tempC: number): string {
   return "#ef4444";
 }
 
-export default function RoutePlanner() {
+interface RoutePlannerProps {
+  initialOriginId?: string;
+  initialDestId?: string;
+  onRoutePlanned?: () => void;
+}
+
+export default function RoutePlanner({ initialOriginId, initialDestId, onRoutePlanned }: RoutePlannerProps = {}) {
   const [sites, setSites] = useState<RouteSite[]>([]);
   const [originId, setOriginId] = useState("");
   const [destId, setDestId] = useState("");
@@ -26,10 +32,19 @@ export default function RoutePlanner() {
   const mapInstance = useRef<L.Map | null>(null);
   const layersRef = useRef<L.Layer[]>([]);
 
-  // Load sites
+  // Load sites, then auto-plan if Kelvin sent us origin/dest
+  const autoPlanDone = useRef(false);
   useEffect(() => {
-    getRouteSites().then(setSites).catch(console.error);
-  }, []);
+    getRouteSites().then((s) => {
+      setSites(s);
+      // Auto-set from Kelvin navigation
+      if (initialOriginId && initialDestId && !autoPlanDone.current) {
+        autoPlanDone.current = true;
+        setOriginId(initialOriginId);
+        setDestId(initialDestId);
+      }
+    }).catch(console.error);
+  }, [initialOriginId, initialDestId]);
 
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
@@ -57,6 +72,13 @@ export default function RoutePlanner() {
       L.marker([s.latitude, s.longitude], { icon }).addTo(m).bindPopup(`<b>${s.name}</b><br>${s.site_id}`);
     });
   }, [sites]);
+
+  // Auto-plan when Kelvin sets origin + dest
+  useEffect(() => {
+    if (sites.length > 0 && originId && destId && !result && !loading) {
+      planRouteHandler();
+    }
+  }, [sites, originId, destId]);
 
   const requestGPS = () => {
     setGpsLoading(true);
@@ -129,6 +151,7 @@ export default function RoutePlanner() {
       });
       setResult(r);
       drawRoutes(r);
+      onRoutePlanned?.();
     } catch (e: any) {
       setError(e.message || "Failed to plan route");
     }
@@ -170,6 +193,26 @@ export default function RoutePlanner() {
     const startMarker = L.marker(fastestCoords[0], { icon: startIcon }).addTo(m).bindPopup(`<b>${r.origin.name}</b>`);
     const endMarker = L.marker(fastestCoords[fastestCoords.length - 1], { icon: endIcon }).addTo(m).bindPopup(`<b>${r.destination.name}</b>`);
     layersRef.current.push(startMarker, endMarker);
+
+    // Place pegman at the origin (Kelvin-initiated routes)
+    if (initialOriginId) {
+      const PEGMAN_SVG = `<svg viewBox="0 0 28 44" width="32" height="48" style="filter:drop-shadow(0 3px 6px rgba(0,0,0,0.5))"><path d="M14 46 C14 46 2 28 2 16 A12 12 0 0 1 26 16 C26 28 14 46 14 46Z" fill="#F2994A" stroke="#D97706" stroke-width="1"/><circle cx="14" cy="16" r="10" fill="#FEF3C7" stroke="#F2994A" stroke-width="1"/><circle cx="14" cy="12" r="4" fill="#D97706"/><path d="M9 18 Q14 16 19 18 L17.5 26 Q14 27.5 10.5 26 Z" fill="#D97706"/></svg>`;
+      const pegmanIcon = L.divIcon({
+        className: "pegman-marker",
+        html: PEGMAN_SVG,
+        iconSize: [32, 48],
+        iconAnchor: [16, 44],
+      });
+      const pegmanMarker = L.marker(fastestCoords[0], { icon: pegmanIcon }).addTo(m);
+      pegmanMarker.bindPopup(
+        `<div style="font-family:system-ui;min-width:160px;text-align:center">
+          <div style="font-size:12px;color:#64748b;margin-bottom:4px">Your starting point</div>
+          <div style="font-weight:700;font-size:14px">${r.origin.name}</div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:4px">Drag the pegman to any point for street view</div>
+        </div>`
+      );
+      layersRef.current.push(pegmanMarker);
+    }
 
     m.fitBounds(L.latLngBounds([...fastestCoords, ...coolestCoords]).pad(0.15));
   };

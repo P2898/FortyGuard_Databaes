@@ -36,6 +36,26 @@ def _get_latest_assessments():
     return get_latest_assessments()
 
 
+def _find_site_by_name(sites: list, name: str) -> dict | None:
+    """Fuzzy-match a site by name. Tries exact, then partial match."""
+    name_lower = name.lower().strip()
+    # Exact match
+    for s in sites:
+        if s.get("name", "").lower() == name_lower:
+            return s
+    # Partial match (name contains search or search contains name)
+    for s in sites:
+        site_name = s.get("name", "").lower()
+        if name_lower in site_name or site_name in name_lower:
+            return s
+    # Word-level match (any word matches)
+    for s in sites:
+        site_words = s.get("name", "").lower().split()
+        if any(w in name_lower or name_lower in w for w in site_words):
+            return s
+    return None
+
+
 def _get_riskiest_site():
     """Get the highest-risk site from cached fleet assessments."""
     assessments = _get_latest_assessments()
@@ -99,12 +119,46 @@ async def ask_kelvin(req: KelvinRequest):
             data = {"site_id": "none", "temperature_c": 0, "risk_bucket": "LOW"}
 
     elif intent == "coolest_route":
+        origin_name = params.get("origin", "unknown")
+        dest_name = params.get("destination", "unknown")
+
+        # Look up actual site data by name (fuzzy match)
+        sites = _get_sites()
+        origin_site = _find_site_by_name(sites, origin_name)
+        dest_site = _find_site_by_name(sites, dest_name)
+
         data = {
-            "origin": params.get("origin", "unknown"),
-            "destination": params.get("destination", "unknown"),
+            "origin": origin_name,
+            "destination": dest_name,
             "temp_delta_f": 6,
             "time_delta_min": 4,
         }
+
+        # If both sites found, include coordinates and route action
+        if origin_site and dest_site:
+            data["origin_site_id"] = origin_site["site_id"]
+            data["origin_lat"] = origin_site["latitude"]
+            data["origin_lon"] = origin_site["longitude"]
+            data["origin_name"] = origin_site["name"]
+            data["dest_site_id"] = dest_site["site_id"]
+            data["dest_lat"] = dest_site["latitude"]
+            data["dest_lon"] = dest_site["longitude"]
+            data["dest_name"] = dest_site["name"]
+            data["action"] = {
+                "type": "navigate_route",
+                "origin_id": origin_site["site_id"],
+                "dest_id": dest_site["site_id"],
+            }
+        elif origin_site:
+            data["origin_site_id"] = origin_site["site_id"]
+            data["origin_lat"] = origin_site["latitude"]
+            data["origin_lon"] = origin_site["longitude"]
+            data["origin_name"] = origin_site["name"]
+        elif dest_site:
+            data["dest_site_id"] = dest_site["site_id"]
+            data["dest_lat"] = dest_site["latitude"]
+            data["dest_lon"] = dest_site["longitude"]
+            data["dest_name"] = dest_site["name"]
 
     elif intent == "heat_cost":
         assessments = _get_latest_assessments()

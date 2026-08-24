@@ -56,6 +56,7 @@ export default function App() {
   const [refreshMs, setRefreshMs] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [routeNav, setRouteNav] = useState<{ originId: string; destId: string } | null>(null);
 
   const loadSites = useCallback(async () => {
     try {
@@ -101,6 +102,11 @@ export default function App() {
   const selectSite = (id: string) => {
     setSelectedSite(id);
     setView("site");
+  };
+
+  const navigateToRoute = (originId: string, destId: string) => {
+    setRouteNav({ originId, destId });
+    setView("route");
   };
 
   // Get highest risk across all assessments for Kelvin avatar
@@ -341,10 +347,16 @@ export default function App() {
               onBack={() => setView("dashboard")}
             />
           )}
-          {view === "route" && <RoutePlanner />}
+          {view === "route" && (
+            <RoutePlanner
+              initialOriginId={routeNav?.originId}
+              initialDestId={routeNav?.destId}
+              onRoutePlanned={() => setRouteNav(null)}
+            />
+          )}
           {view === "heatpl" && <HeatPLScreen />}
           {view === "reports" && <ReportsScreen sites={sites} />}
-          {view === "kelvin" && <KelvinPanel />}
+          {view === "kelvin" && <KelvinPanel onNavigateRoute={navigateToRoute} />}
           {view === "settings" && (
             <SettingsScreen
               policy={policy}

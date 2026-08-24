@@ -58,9 +58,9 @@ function KelvinAvatar({ level, speaking }: { level: string; speaking: boolean })
   );
 }
 
-export default function KelvinPanel() {
+export default function KelvinPanel({ onNavigateRoute }: { onNavigateRoute?: (originId: string, destId: string) => void } = {}) {
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<{ role: string; text: string }[]>([
+  const [messages, setMessages] = useState<{ role: string; text: string; action?: any }[]>([
     {
       role: "kelvin",
       text: "Hi! I'm Kelvin, your heat safety assistant. Ask me about site safety, riskiest sites, routes, or heat costs.",
@@ -150,7 +150,7 @@ export default function KelvinPanel() {
     setMessages((m) => [...m, { role: "user", text: q }]);
     try {
       const res = await api.askKelvin(q);
-      setMessages((m) => [...m, { role: "kelvin", text: res.response }]);
+      setMessages((m) => [...m, { role: "kelvin", text: res.response, action: res.data?.action || null }]);
 
       // Update avatar risk level from response data
       if (res.data?.risk_bucket) {
@@ -229,6 +229,30 @@ export default function KelvinPanel() {
                   }}
                 >
                   {m.text}
+                  {m.action?.type === "navigate_route" && onNavigateRoute && (
+                    <div style={{ marginTop: 10 }}>
+                      <button
+                        onClick={() => onNavigateRoute(m.action.origin_id, m.action.dest_id)}
+                        style={{
+                          padding: "8px 16px",
+                          background: "linear-gradient(135deg, #06b6d4, #0891b2)",
+                          color: "#fff",
+                          borderRadius: 8,
+                          border: "none",
+                          cursor: "pointer",
+                          fontWeight: 600,
+                          fontSize: 13,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          width: "100%",
+                          justifyContent: "center",
+                        }}
+                      >
+                        🗺️ Open Route Planner
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
