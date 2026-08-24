@@ -82,7 +82,7 @@ async def list_sites():
 @router.post("", response_model=SiteResponse)
 async def create_site(site: SiteCreate):
     _validate_site(site.site_id, site.latitude, site.longitude, site.site_type)
-    entry = {**site.model_dump(), "created_at": datetime.utcnow().isoformat()}
+    entry = {**site.dict(), "created_at": datetime.utcnow().isoformat()}
 
     if is_configured():
         sb = get_service_client()

@@ -171,7 +171,7 @@ async def assess_fleet(req: AssessRequest):
         )
 
         # Save to audit log (non-blocking)
-        _save_assessment(assessment.model_dump())
+        _save_assessment(assessment.dict())
         assessments.append(assessment)
 
     # Sort by risk (CRITICAL first)
@@ -181,7 +181,7 @@ async def assess_fleet(req: AssessRequest):
     elapsed_ms = int((time.time() - start) * 1000)
 
     # Cache for Heat P&L and Kelvin
-    _latest_assessment_cache["data"] = [a.model_dump() for a in assessments]
+    _latest_assessment_cache["data"] = [a.dict() for a in assessments]
     _latest_assessment_cache["timestamp"] = datetime.utcnow().isoformat()
 
     return AssessmentResponse(

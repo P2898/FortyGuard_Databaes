@@ -132,7 +132,7 @@ async def get_heat_pl(date: str = "", site_count: int = 8):
 
 @router.put("/policy")
 async def update_policy(policy: PolicyUpdate):
-    p = CompanyPolicy(**policy.model_dump())
+    p = CompanyPolicy(**policy.dict())
     _save_policy(p)
     return {"message": "Policy updated", "policy": p.__dict__}
 
