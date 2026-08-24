@@ -1,4 +1,4 @@
-const BASE = import.meta.env.DEV ? '/api' : 'https://shade-api.onrender.com/api';
+const BASE = import.meta.env.DEV ? '/api' : 'https://shade-api-gbyb.onrender.com/api';
 
 async function fetchJSON<T>(url: string, options?: RequestInit): Promise<T> {
   const headers: Record<string, string> = {};
