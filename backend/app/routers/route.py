@@ -136,24 +136,22 @@ def _get_heat_coolest_route(fastest_coords, heatmap_tiles):
 
     Instead of independent heat-weighted routing (which causes zig-zag),
     we follow the fastest route but push waypoints away from hot areas.
+    Uses Gaussian smoothing on the offset to avoid sharp zig-zags.
     """
     if len(fastest_coords) < 2:
         return fastest_coords
 
-    coolest = []
+    # Step 1: Compute raw offsets at each point
+    raw_offsets = []
     for i, (lon, lat) in enumerate(fastest_coords):
         temp = _get_temperature_at_point(lat, lon, heatmap_tiles)
 
-        if temp > 32:
-            # Hot zone — push perpendicular to the route direction
-            if i < len(fastest_coords) - 1:
-                next_lon, next_lat = fastest_coords[i + 1]
-            else:
-                next_lon, next_lat = fastest_coords[i - 1] if i > 0 else (lon, lat)
-
-            # Direction vector
-            dx = next_lon - (fastest_coords[i-1][0] if i > 0 else lon)
-            dy = next_lat - (fastest_coords[i-1][1] if i > 0 else lat)
+        if temp > 30:
+            # Compute route direction at this point
+            prev_lon, prev_lat = fastest_coords[max(0, i - 1)]
+            next_lon, next_lat = fastest_coords[min(len(fastest_coords) - 1, i + 1)]
+            dx = next_lon - prev_lon
+            dy = next_lat - prev_lat
 
             # Perpendicular (rotate 90 degrees)
             perp_x = -dy
@@ -162,12 +160,37 @@ def _get_heat_coolest_route(fastest_coords, heatmap_tiles):
             perp_x /= mag
             perp_y /= mag
 
-            # Detour amount scales with temperature
-            detour = min(0.04, (temp - 30) * 0.005)
-            # Push toward coast (west = negative lon) for Bay Area
-            coolest.append((lon - detour + perp_x * detour * 0.3, lat + perp_y * detour * 0.3))
+            # Detour amount scales with temperature, capped
+            detour = min(0.03, max(0, (temp - 28) * 0.003))
+            # Push perpendicular to route, bias slightly west (toward coast)
+            raw_offsets.append((
+                perp_x * detour * 0.7 - detour * 0.3,  # westward bias
+                perp_y * detour * 0.7,
+            ))
         else:
-            coolest.append((lon, lat))
+            raw_offsets.append((0.0, 0.0))
+
+    # Step 2: Gaussian-smooth the offsets to avoid zig-zag
+    smoothed = []
+    window = 5  # smooth over ±5 points
+    for i in range(len(raw_offsets)):
+        sx, sy = 0.0, 0.0
+        weight_sum = 0.0
+        for j in range(max(0, i - window), min(len(raw_offsets), i + window + 1)):
+            w = math.exp(-0.5 * ((i - j) / 2.0) ** 2)  # Gaussian kernel
+            sx += raw_offsets[j][0] * w
+            sy += raw_offsets[j][1] * w
+            weight_sum += w
+        if weight_sum > 0:
+            sx /= weight_sum
+            sy /= weight_sum
+        smoothed.append((sx, sy))
+
+    # Step 3: Apply smoothed offsets
+    coolest = []
+    for i, (lon, lat) in enumerate(fastest_coords):
+        ox, oy = smoothed[i]
+        coolest.append((lon + ox, lat + oy))
 
     return coolest
 

@@ -175,7 +175,8 @@ export default function KelvinPanel({ onNavigateRoute }: { onNavigateRoute?: (or
   const quickQuestions = [
     "Which site is riskiest?",
     "What did heat cost us today?",
-    "How many sites are critical?",
+    "Is SF Waterfront safe right now?",
+    "Route from Oakland to Tracy",
   ];
 
   return (

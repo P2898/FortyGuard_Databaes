@@ -21,10 +21,14 @@ def match_intent(user_input: str) -> dict:
     """
     text = user_input.lower().strip()
 
-    # Pattern 1: "Is site [X] safe right now?"
-    safe_match = re.search(r"is\s+(?:site\s+)?(\S+)\s+safe", text)
+    # Pattern 1: "Is site [X] safe right now?" or "Is [X] safe?"
+    safe_match = re.search(r"is\s+(?:site\s+)?(.+?)\s+safe", text)
     if safe_match:
-        return {"intent": "site_safety", "params": {"site_id": safe_match.group(1)}, "confidence": 0.9}
+        site_name = safe_match.group(1).strip()
+        # If it contains multiple words, try fuzzy site name matching
+        if " " in site_name:
+            return {"intent": "site_safety", "params": {"site_id": site_name, "site_name": site_name}, "confidence": 0.85}
+        return {"intent": "site_safety", "params": {"site_id": site_name}, "confidence": 0.9}
 
     # Pattern 2: "Which site is riskiest right now?"
     if any(word in text for word in ["riskiest", "most dangerous", "highest risk", "worst site"]):
@@ -44,6 +48,11 @@ def match_intent(user_input: str) -> dict:
     plan_match = re.search(r"plan\s+(?:a\s+)?(?:route|trip|path)\s+(?:from|between)\s+(.+?)\s+(?:to|and)\s+(.+?)(?:\?|$)", text)
     if plan_match:
         return {"intent": "coolest_route", "params": {"origin": plan_match.group(1).strip(), "destination": plan_match.group(2).strip()}, "confidence": 0.85}
+
+    # Pattern 3d: "route from A to B" (simple)
+    simple_route = re.search(r"route\s+(?:from|between)\s+(.+?)\s+(?:to|and)\s+(.+?)(?:\?|$)", text)
+    if simple_route:
+        return {"intent": "coolest_route", "params": {"origin": simple_route.group(1).strip(), "destination": simple_route.group(2).strip()}, "confidence": 0.8}
 
     # Pattern 4: "What did heat cost us today?"
     if any(word in text for word in ["cost", "expense", "p&l", "financial", "money", "dollars"]):
@@ -73,14 +82,19 @@ def phrase_response(intent: str, data: dict, user_input: str = "") -> str:
     """
     if intent == "site_safety":
         site_id = data.get("site_id", "unknown")
+        site_name = data.get("name", site_id)
         risk = data.get("risk_bucket", "UNKNOWN")
         temp = data.get("temperature_c", "N/A")
+        exceedance = data.get("exceedance_hours", 0)
+        if risk == "UNKNOWN":
+            return f"I couldn't find a site matching '{site_id}'. Try using the site ID (e.g. WH-SF-01) or check the dashboard for available sites."
+        display_name = site_name if site_name and site_name != site_id else site_id
         if risk in ("LOW", "MEDIUM"):
-            return f"Site {site_id} is currently {risk} risk at {temp}°C. Standard protocols apply."
+            return f"{display_name} is currently {risk} risk at {temp}°C with {exceedance}h exceedance. Standard protocols apply."
         elif risk == "HIGH":
-            return f"Attention: Site {site_id} is HIGH risk at {temp}°C. Increase rest frequency and deploy cooling stations."
+            return f"Attention: {display_name} is HIGH risk at {temp}°C with {exceedance}h exceedance. Increase rest frequency and deploy cooling stations."
         else:
-            return f"ALERT: Site {site_id} is CRITICAL at {temp}°C. Halt outdoor work during peak hours immediately."
+            return f"ALERT: {display_name} is CRITICAL at {temp}°C with {exceedance}h exceedance. Halt outdoor work during peak hours immediately."
 
     elif intent == "riskiest_site":
         site = data.get("site_id", "unknown")

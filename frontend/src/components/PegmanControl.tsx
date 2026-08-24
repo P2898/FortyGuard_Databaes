@@ -195,7 +195,7 @@ function buildPopupHTML(
  * Add a draggable pegman control to a Leaflet map.
  * Drop the pegman anywhere on the map to inspect street-level heat data.
  */
-export function addPegmanToMap(map: L.Map): void {
+export function addPegmanToMap(map: L.Map): (() => void) | void {
   // 1. Create the pegman control
   const PegmanControl = L.Control.extend({
     options: { position: "bottomright" as const },
@@ -277,6 +277,8 @@ export function addPegmanToMap(map: L.Map): void {
       )
       .openPopup();
 
+    // Tag as pegman so FleetMap doesn't remove it
+    (marker as any).__pegman = true;
     currentPopupMarker = marker;
 
     // Fetch heat data and update popup
@@ -286,8 +288,8 @@ export function addPegmanToMap(map: L.Map): void {
     }
   });
 
-  // 3. Click on map also works as fallback (place pegman on click)
-  map.on("click", async (e: L.LeafletMouseEvent) => {
+  // 3. Click on map also works as fallback (Shift+Click to place pegman)
+  const clickHandler = async (e: L.LeafletMouseEvent) => {
     // Only if Shift+Click (to not interfere with normal map clicks)
     if (!e.originalEvent.shiftKey) return;
 
@@ -316,11 +318,23 @@ export function addPegmanToMap(map: L.Map): void {
       )
       .openPopup();
 
+    // Tag as pegman so FleetMap doesn't remove it
+    (marker as any).__pegman = true;
     currentPopupMarker = marker;
 
     const data = await fetchHeatData(lat, lng);
     if (marker === currentPopupMarker) {
       marker.setPopupContent(buildPopupHTML(lat, lng, data));
     }
-  });
+  };
+
+  map.on("click", clickHandler);
+
+  // Return cleanup function
+  return () => {
+    map.off("click", clickHandler);
+    if (currentPopupMarker) {
+      map.removeLayer(currentPopupMarker);
+    }
+  };
 }

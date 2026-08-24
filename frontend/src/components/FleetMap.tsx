@@ -22,18 +22,25 @@ export default function FleetMap({
       maxZoom: 18,
     }).addTo(m);
     mapInstance.current = m;
-    addPegmanToMap(m);
+    const cleanupPegman = addPegmanToMap(m);
 
-    return () => { m.remove(); mapInstance.current = null; };
+    return () => {
+      cleanupPegman?.();
+      m.remove();
+      mapInstance.current = null;
+    };
   }, []);
 
   useEffect(() => {
     const m = mapInstance.current;
     if (!m) return;
 
-    // Remove existing markers and circles
+    // Remove existing site markers and circles (but NOT pegman markers)
     m.eachLayer((layer: any) => {
-      if (layer instanceof L.Marker || layer instanceof L.Circle) {
+      if (layer instanceof L.Circle) {
+        m.removeLayer(layer);
+      }
+      if (layer instanceof L.Marker && !(layer as any).__pegman) {
         m.removeLayer(layer);
       }
     });

@@ -31,9 +31,36 @@ def _get_sites():
 
 
 def _get_latest_assessments():
-    """Get latest assessments from the in-memory cache (populated by fleet assessment)."""
+    """Get latest assessments from the in-memory cache.
+    
+    If cache is empty (no fleet assessment run yet), trigger one automatically
+    so Kelvin always has data to answer questions.
+    """
     from app.routers.assessment import get_latest_assessments
-    return get_latest_assessments()
+    assessments = get_latest_assessments()
+    if not assessments:
+        # No assessments yet — run one synchronously so Kelvin has data
+        import asyncio
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # We're already inside an async handler, use a thread
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as pool:
+                    future = pool.submit(asyncio.run, _trigger_fleet_assessment())
+                    future.result(timeout=15)
+            else:
+                loop.run_until_complete(_trigger_fleet_assessment())
+        except Exception:
+            pass  # Fall through to empty list
+        assessments = get_latest_assessments()
+    return assessments
+
+
+async def _trigger_fleet_assessment():
+    """Run a fleet assessment to populate the cache."""
+    from app.routers.assessment import assess_fleet, AssessRequest
+    await assess_fleet(AssessRequest())
 
 
 def _find_site_by_name(sites: list, name: str) -> dict | None:
@@ -96,12 +123,22 @@ async def ask_kelvin(req: KelvinRequest):
 
     if intent == "site_safety":
         site_id = params.get("site_id", "")
+        site_name = params.get("site_name", "")
         assessment = _get_site_assessment(site_id)
+        if not assessment and site_name:
+            # Try fuzzy name match against assessments
+            assessments = _get_latest_assessments()
+            for a in assessments:
+                if site_name.lower() in (a.get("name", "") or "").lower():
+                    assessment = a
+                    break
         if assessment:
             data = {
                 "site_id": assessment.get("site_id"),
+                "name": assessment.get("name", ""),
                 "temperature_c": assessment.get("temperature_c"),
                 "risk_bucket": assessment.get("risk_bucket"),
+                "exceedance_hours": assessment.get("exceedance_hours", 0),
             }
         else:
             data = {"site_id": site_id, "temperature_c": "N/A", "risk_bucket": "UNKNOWN"}
@@ -162,17 +199,16 @@ async def ask_kelvin(req: KelvinRequest):
 
     elif intent == "heat_cost":
         assessments = _get_latest_assessments()
-        if assessments:
-            high_hours = sum(a.get("exceedance_hours", 0) for a in assessments if a.get("risk_bucket") == "HIGH")
-            critical_hours = sum(a.get("exceedance_hours", 0) for a in assessments if a.get("risk_bucket") == "CRITICAL")
-            hours_avoided = sum(a.get("persistence_hours", 0) * 0.5 for a in assessments if a.get("risk_bucket") in ("MEDIUM", "HIGH"))
-            exceedance_days = sum(1 for a in assessments if a.get("exceedance_hours", 0) > 0)
-        else:
-            high_hours, critical_hours, hours_avoided, exceedance_days = 8.5, 3.2, 5.0, 3
+        high_hours = sum(a.get("exceedance_hours", 0) for a in assessments if a.get("risk_bucket") == "HIGH")
+        critical_hours = sum(a.get("exceedance_hours", 0) for a in assessments if a.get("risk_bucket") == "CRITICAL")
+        hours_avoided = sum(a.get("persistence_hours", 0) * 0.5 for a in assessments if a.get("risk_bucket") in ("MEDIUM", "HIGH"))
+        exceedance_days = sum(1 for a in assessments if a.get("exceedance_hours", 0) > 0)
 
-        policy = CompanyPolicy(hazard_pay_rate_per_hr=25.0, wage_rate_per_hr=35.0, contract_day_rate=5000.0)
+        # Read actual company policy from Supabase or in-memory
+        from app.routers.heat_pl import _get_policy
+        policy = _get_policy()
         pl = compute_heat_pl(high_hours=high_hours, critical_hours=critical_hours, hours_avoided=hours_avoided, exceedance_days=exceedance_days, policy=policy)
-        data = {"total_cost": pl.total_cost}
+        data = {"total_cost": pl.total_cost, "site_count": len(assessments)}
 
     elif intent == "site_temperature":
         site_id = params.get("site_id", "")

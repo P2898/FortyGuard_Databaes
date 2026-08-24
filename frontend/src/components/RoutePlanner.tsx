@@ -54,8 +54,12 @@ export default function RoutePlanner({ initialOriginId, initialDestId, onRoutePl
       maxZoom: 18,
     }).addTo(m);
     mapInstance.current = m;
-    addPegmanToMap(m);
-    return () => { m.remove(); mapInstance.current = null; };
+    const cleanupPegman = addPegmanToMap(m);
+    return () => {
+      cleanupPegman?.();
+      m.remove();
+      mapInstance.current = null;
+    };
   }, []);
 
   // Add site markers
@@ -73,12 +77,17 @@ export default function RoutePlanner({ initialOriginId, initialDestId, onRoutePl
     });
   }, [sites]);
 
-  // Auto-plan when Kelvin sets origin + dest
+  // Auto-plan when Kelvin sets origin + dest (run once per Kelvin navigation)
+  const lastAutoPlanKey = useRef("");
   useEffect(() => {
-    if (sites.length > 0 && originId && destId && !result && !loading) {
-      planRouteHandler();
+    if (sites.length > 0 && originId && destId && initialOriginId && initialDestId) {
+      const key = `${initialOriginId}-${initialDestId}`;
+      if (key !== lastAutoPlanKey.current && !result && !loading) {
+        lastAutoPlanKey.current = key;
+        planRouteHandler();
+      }
     }
-  }, [sites, originId, destId]);
+  }, [sites, originId, destId, initialOriginId, initialDestId]);
 
   const requestGPS = () => {
     setGpsLoading(true);
