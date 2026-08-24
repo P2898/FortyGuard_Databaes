@@ -1,4 +1,4 @@
-const BASE = '/api';
+const BASE = import.meta.env.DEV ? '/api' : 'https://shade-api.onrender.com/api';
 
 async function fetchJSON<T>(url: string, options?: RequestInit): Promise<T> {
   const headers: Record<string, string> = {};
@@ -11,6 +11,19 @@ async function fetchJSON<T>(url: string, options?: RequestInit): Promise<T> {
     throw new Error(err.detail || 'Request failed');
   }
   return res.json();
+}
+
+async function fetchBlob(url: string, options?: RequestInit): Promise<Blob> {
+  const headers: Record<string, string> = {};
+  if (!(options?.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
+  const res = await fetch(`${BASE}${url}`, { headers, ...options });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || 'Request failed');
+  }
+  return res.blob();
 }
 
 // Types
@@ -97,6 +110,41 @@ export const updatePolicy = (policy: Partial<Policy>) => fetchJSON<any>('/heat-p
 
 // Kelvin
 export const askKelvin = (message: string) => fetchJSON<KelvinResponse>('/kelvin', { method: 'POST', body: JSON.stringify({ message }) });
+
+// Routes
+export interface RouteResult {
+  origin: { name: string; lat: number; lon: number };
+  destination: { name: string; lat: number; lon: number };
+  fastest_route: { type: string; coordinates: number[][]; avg_temp_c: number };
+  coolest_route: { type: string; coordinates: number[][]; avg_temp_c: number };
+  temp_delta_f: number;
+  temp_delta_c: number;
+  time_delta_min: number;
+  distance_km: number;
+}
+
+export interface RouteSite {
+  site_id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+}
+
+export const planRoute = (req: { origin_lat: number; origin_lon: number; dest_lat: number; dest_lon: number; origin_name?: string; dest_name?: string }) =>
+  fetchJSON<RouteResult>('/routes/plan', { method: 'POST', body: JSON.stringify(req) });
+
+export const getRouteSites = () => fetchJSON<RouteSite[]>('/routes/sites');
+
+// Reports
+export const generateReport = async (req: { scope: string; site_id?: string }) => {
+  const blob = await fetchBlob('/reports/generate', { method: 'POST', body: JSON.stringify(req) });
+  return blob;
+};
+
+export const generateCSVReport = async (req: { scope: string; site_id?: string }) => {
+  const blob = await fetchBlob('/reports/csv', { method: 'POST', body: JSON.stringify(req) });
+  return blob;
+};
 
 // Config
 export const getConfig = () => fetchJSON<any>('/config');

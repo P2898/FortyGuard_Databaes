@@ -55,6 +55,7 @@ export default function App() {
   const [refreshTime, setRefreshTime] = useState("");
   const [refreshMs, setRefreshMs] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const loadSites = useCallback(async () => {
     try {
@@ -102,39 +103,79 @@ export default function App() {
     setView("site");
   };
 
+  // Get highest risk across all assessments for Kelvin avatar
+  const highestRisk = assessments.length
+    ? [...assessments].sort((a, b) => {
+        const order: Record<string, number> = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
+        return (order[b.risk_bucket] || 0) - (order[a.risk_bucket] || 0);
+      })[0].risk_bucket
+    : "LOW";
+
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "#0a0f1a" }}>
-      {/* Sidebar - desktop */}
+      {/* Sidebar */}
       <nav
         style={{
-          width: 220,
+          width: sidebarCollapsed ? 64 : 220,
           background: "#111827",
           borderRight: "1px solid #1e293b",
           display: "flex",
           flexDirection: "column",
           flexShrink: 0,
+          transition: "width 0.2s ease",
         }}
         className="sidebar-desktop"
       >
-        <div style={{ padding: "20px 16px", borderBottom: "1px solid #1e293b" }}>
-          <h1 style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.5, color: "#e2e8f0" }}>
-            {"\uD83C\uDF21"} Shade
-          </h1>
-          <p style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
-            FortyGuard-powered safety
-          </p>
+        {/* Logo area */}
+        <div
+          style={{
+            padding: sidebarCollapsed ? "16px 8px" : "20px 16px",
+            borderBottom: "1px solid #1e293b",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              background: "linear-gradient(135deg, #F2994A, #1B2A4A)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 16,
+              flexShrink: 0,
+            }}
+          >
+            {"\u2600"}
+          </div>
+          {!sidebarCollapsed && (
+            <div>
+              <h1 style={{ fontSize: 18, fontWeight: 800, letterSpacing: -0.5, color: "#e2e8f0", margin: 0 }}>
+                Shade
+              </h1>
+              <p style={{ fontSize: 11, color: "#64748b", marginTop: 0 }}>
+                FortyGuard-powered safety
+              </p>
+            </div>
+          )}
         </div>
-        <div style={{ flex: 1, padding: "8px" }}>
+
+        {/* Nav items */}
+        <div style={{ flex: 1, padding: "8px 6px" }}>
           {NAV_ITEMS.map(([v, icon, label]) => (
             <button
               key={v}
               onClick={() => setView(v)}
+              title={sidebarCollapsed ? label : undefined}
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: 10,
                 width: "100%",
-                padding: "10px 12px",
+                padding: sidebarCollapsed ? "10px 8px" : "10px 12px",
                 marginBottom: 2,
                 borderRadius: 8,
                 border: "none",
@@ -143,28 +184,37 @@ export default function App() {
                 fontWeight: view === v ? 600 : 400,
                 background: view === v ? "#1e293b" : "transparent",
                 color: view === v ? "#06b6d4" : "#94a3b8",
-                textAlign: "left",
+                textAlign: sidebarCollapsed ? "center" : "left",
+                justifyContent: sidebarCollapsed ? "center" : "flex-start",
+                transition: "all 0.15s",
               }}
             >
-              <span>{icon}</span> {label}
+              <span style={{ fontSize: 16, flexShrink: 0 }}>{icon}</span>
+              {!sidebarCollapsed && <span>{label}</span>}
             </button>
           ))}
         </div>
-        <div style={{ padding: "12px 8px", borderTop: "1px solid #1e293b" }}>
+
+        {/* Bottom section */}
+        <div style={{ padding: "8px 6px", borderTop: "1px solid #1e293b" }}>
           <button
             onClick={() => setView("setup")}
             style={{
               width: "100%",
-              padding: "8px",
+              padding: sidebarCollapsed ? "8px" : "8px 12px",
               background: "#1e293b",
               border: "1px solid #334155",
-              borderRadius: 6,
+              borderRadius: 8,
               cursor: "pointer",
               fontSize: 13,
               color: "#94a3b8",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              justifyContent: sidebarCollapsed ? "center" : "flex-start",
             }}
           >
-            {"\u2699"} Site Setup
+            {!sidebarCollapsed ? "\u2699 Site Setup" : "\u2699"}
           </button>
         </div>
       </nav>
@@ -177,12 +227,27 @@ export default function App() {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            padding: "12px 24px",
+            padding: "10px 24px",
             borderBottom: "1px solid #1e293b",
             background: "#111827",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="sidebar-desktop"
+              style={{
+                fontSize: 16,
+                background: "none",
+                border: "none",
+                color: "#64748b",
+                cursor: "pointer",
+                padding: "4px 8px",
+              }}
+              title="Toggle sidebar"
+            >
+              {"\u2630"}
+            </button>
             {refreshTime && (
               <span
                 style={{
@@ -191,28 +256,72 @@ export default function App() {
                   background: "#1e293b",
                   padding: "4px 10px",
                   borderRadius: 12,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
                 }}
               >
-                Last refresh: {refreshTime} ({refreshMs}ms{" "}
-                <span style={{ color: "#22c55e" }}>cached</span>)
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    background: "#22c55e",
+                    flexShrink: 0,
+                  }}
+                />
+                Refreshed {refreshTime} ({refreshMs}ms)
               </span>
             )}
           </div>
-          <button
-            onClick={refreshAssessments}
-            disabled={refreshing}
-            style={{
-              fontSize: 13,
-              padding: "6px 14px",
-              background: refreshing ? "#334155" : "#1e293b",
-              border: "1px solid #334155",
-              borderRadius: 6,
-              cursor: "pointer",
-              color: "#e2e8f0",
-            }}
-          >
-            {refreshing ? "Refreshing..." : "\u21BB Refresh"}
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {assessments.length > 0 && (
+              <div style={{ display: "flex", gap: 6, marginRight: 8 }}>
+                {(["CRITICAL", "HIGH", "MEDIUM", "LOW"] as const).map((bucket) => {
+                  const count = assessments.filter((a) => a.risk_bucket === bucket).length;
+                  if (!count) return null;
+                  const colors: Record<string, string> = { CRITICAL: "#dc2626", HIGH: "#ea580c", MEDIUM: "#d97706", LOW: "#16a34a" };
+                  return (
+                    <span
+                      key={bucket}
+                      style={{
+                        fontSize: 11,
+                        padding: "2px 8px",
+                        borderRadius: 10,
+                        background: `${colors[bucket]}20`,
+                        color: colors[bucket],
+                        fontWeight: 600,
+                      }}
+                    >
+                      {count} {bucket}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+            <button
+              onClick={refreshAssessments}
+              disabled={refreshing}
+              style={{
+                fontSize: 13,
+                padding: "6px 14px",
+                background: refreshing ? "#334155" : "#1e293b",
+                border: "1px solid #334155",
+                borderRadius: 8,
+                cursor: "pointer",
+                color: "#e2e8f0",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                transition: "all 0.15s",
+              }}
+            >
+              <span style={{ animation: refreshing ? "spin 1s linear infinite" : "none", display: "inline-block" }}>
+                {"\u21BB"}
+              </span>
+              {refreshing ? "Assessing..." : "Refresh"}
+            </button>
+          </div>
         </div>
 
         {/* Content area */}
@@ -254,10 +363,10 @@ export default function App() {
           style={{
             display: "flex",
             justifyContent: "space-between",
-            padding: "10px 24px",
+            padding: "8px 24px",
             borderTop: "1px solid #1e293b",
             background: "#111827",
-            fontSize: 12,
+            fontSize: 11,
             color: "#475569",
           }}
         >
@@ -320,6 +429,10 @@ export default function App() {
         @media (max-width: 768px) {
           .sidebar-desktop { display: none !important; }
           .mobile-nav { display: flex !important; }
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
       `}</style>
     </div>

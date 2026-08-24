@@ -52,8 +52,7 @@ def _validate_site(site_id: str, lat: float, lon: float, site_type: str):
         raise HTTPException(status_code=400, detail="site_type must be warehouse, construction, route_hub, or other")
 
 
-@router.on_event("startup")
-async def seed_sites():
+async def seed_sites_on_startup():
     """Seed Bay Area demo sites on startup."""
     if is_configured():
         sb = get_service_client()

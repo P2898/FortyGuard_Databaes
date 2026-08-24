@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Site } from "../lib/api";
+import { Site, generateReport, generateCSVReport } from "../lib/api";
 
 export default function ReportsScreen({ sites }: { sites: Site[] }) {
   const [scope, setScope] = useState<"site" | "company">("site");
@@ -7,27 +7,29 @@ export default function ReportsScreen({ sites }: { sites: Site[] }) {
   const [generating, setGenerating] = useState(false);
   const [msg, setMsg] = useState("");
 
+  const downloadBlob = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const generate = async (format: "pdf" | "csv") => {
+    if (scope === "site" && !siteId) return;
     setGenerating(true);
     setMsg("");
     try {
-      const reportName = scope === "site" ? "SG-1_" + siteId : "SG-1_Company_Rollup";
-      const content =
-        "SiteGuard Heat Exposure Record - Form SG-1\n" +
-        "Scope: " + scope + "\n" +
-        "Site: " + (scope === "site" ? siteId : "All Sites") + "\n" +
-        "Generated: " + new Date().toISOString() + "\n" +
-        "Sites: " + sites.map((s) => s.site_id + " (" + s.name + ")").join(", ");
-      const blob = new Blob([content], { type: format === "csv" ? "text/csv" : "text/plain" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = reportName + "." + format;
-      a.click();
-      URL.revokeObjectURL(url);
-      setMsg("Report downloaded: " + reportName + "." + format);
+      const req = { scope, site_id: scope === "site" ? siteId : undefined };
+      const blob = format === "pdf" ? await generateReport(req) : await generateCSVReport(req);
+      const reportName = `Shade_Heat_Exposure_Record_SG-1_${scope === "site" ? siteId : "Company"}_${new Date().toISOString().slice(0, 10)}`;
+      downloadBlob(blob, `${reportName}.${format}`);
+      setMsg(`Report downloaded: ${reportName}.${format}`);
     } catch (e: any) {
-      setMsg("Error: " + e.message);
+      setMsg(`Error: ${e.message}`);
     }
     setGenerating(false);
   };
@@ -38,94 +40,148 @@ export default function ReportsScreen({ sites }: { sites: Site[] }) {
       <p style={{ color: "#94a3b8", marginTop: 2 }}>
         Generate OSHA-ready heat exposure records {"\u2014"} Form SG-1
       </p>
+
       <div
         style={{
           background: "#111827",
           borderRadius: 12,
-          padding: 20,
+          padding: 24,
           border: "1px solid #1e293b",
           marginTop: 20,
-          maxWidth: 500,
+          maxWidth: 560,
         }}
       >
-        <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+        {/* Scope selector */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
           {(["site", "company"] as const).map((s) => (
             <button
               key={s}
               onClick={() => setScope(s)}
               style={{
-                padding: "8px 16px",
+                padding: "10px 20px",
                 background: scope === s ? "#06b6d4" : "#1e293b",
                 color: scope === s ? "#fff" : "#94a3b8",
-                borderRadius: 6,
-                border: "none",
+                borderRadius: 8,
+                border: scope === s ? "1px solid #06b6d4" : "1px solid #334155",
                 cursor: "pointer",
                 fontWeight: 600,
+                fontSize: 14,
+                transition: "all 0.15s",
               }}
             >
-              {s === "site" ? "Site Report" : "Company Rollup"}
+              {s === "site" ? "📋 Site Report" : "🏢 Company Rollup"}
             </button>
           ))}
         </div>
+
+        {/* Site selector */}
         {scope === "site" && (
-          <select
-            value={siteId}
-            onChange={(e) => setSiteId(e.target.value)}
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ fontSize: 13, color: "#94a3b8", display: "block", marginBottom: 6 }}>
+              Select site for report
+            </label>
+            <select
+              value={siteId}
+              onChange={(e) => setSiteId(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "10px 14px",
+                border: "1px solid #334155",
+                borderRadius: 8,
+                background: "#0f172a",
+                color: "#e2e8f0",
+                fontSize: 14,
+              }}
+            >
+              <option value="">Select site...</option>
+              {sites.map((s) => (
+                <option key={s.site_id} value={s.site_id}>
+                  {s.name} ({s.site_id})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {scope === "company" && (
+          <div
             style={{
-              width: "100%",
-              padding: "8px 12px",
-              border: "1px solid #334155",
-              borderRadius: 6,
-              marginBottom: 16,
+              padding: "12px 16px",
               background: "#0f172a",
-              color: "#e2e8f0",
+              borderRadius: 8,
+              border: "1px solid #1e293b",
+              marginBottom: 20,
+              fontSize: 13,
+              color: "#94a3b8",
             }}
           >
-            <option value="">Select site...</option>
-            {sites.map((s) => (
-              <option key={s.site_id} value={s.site_id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
+            Company rollup will include all {sites.length} sites in a single report with summary + individual site sections.
+          </div>
         )}
+
+        {/* Generate buttons */}
         <div style={{ display: "flex", gap: 12 }}>
           <button
             onClick={() => generate("pdf")}
             disabled={generating || (scope === "site" && !siteId)}
             style={{
-              padding: "8px 20px",
-              background: "#ef4444",
+              padding: "10px 24px",
+              background: generating || (scope === "site" && !siteId) ? "#334155" : "#dc2626",
               color: "#fff",
-              borderRadius: 6,
+              borderRadius: 8,
               border: "none",
               cursor: "pointer",
               fontWeight: 600,
+              fontSize: 14,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
             }}
           >
-            Generate PDF
+            {generating ? "Generating..." : "📄 Generate PDF"}
           </button>
           <button
             onClick={() => generate("csv")}
             disabled={generating || (scope === "site" && !siteId)}
             style={{
-              padding: "8px 20px",
-              background: "#22c55e",
+              padding: "10px 24px",
+              background: generating || (scope === "site" && !siteId) ? "#334155" : "#16a34a",
               color: "#fff",
-              borderRadius: 6,
+              borderRadius: 8,
               border: "none",
               cursor: "pointer",
               fontWeight: 600,
+              fontSize: 14,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
             }}
           >
-            Export CSV
+            {generating ? "Generating..." : "📊 Export CSV"}
           </button>
         </div>
+
         {msg && (
-          <p style={{ color: msg.startsWith("Error") ? "#ef4444" : "#22c55e", fontSize: 14, marginTop: 12 }}>
+          <div
+            style={{
+              marginTop: 16,
+              padding: "10px 14px",
+              borderRadius: 8,
+              fontSize: 14,
+              background: msg.startsWith("Error") ? "#7f1d1d" : "#064e3b",
+              color: msg.startsWith("Error") ? "#fca5a5" : "#6ee7b7",
+            }}
+          >
             {msg}
-          </p>
+          </div>
         )}
+      </div>
+
+      {/* Report info */}
+      <div style={{ marginTop: 24, maxWidth: 560, fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>
+        <p><strong style={{ color: "#94a3b8" }}>About Form SG-1:</strong> The Shade Heat Exposure Record captures risk assessments, exceedance/persistence data, and threshold sources for OSHA compliance readiness.</p>
+        <p style={{ marginTop: 8 }}><strong style={{ color: "#94a3b8" }}>PDF report includes:</strong> Risk distribution summary, detailed assessments table, sourced thresholds, and compliance metadata.</p>
+        <p style={{ marginTop: 8 }}><strong style={{ color: "#94a3b8" }}>CSV report includes:</strong> All assessment data in spreadsheet-compatible format for custom analysis.</p>
       </div>
     </div>
   );

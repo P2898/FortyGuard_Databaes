@@ -1,119 +1,168 @@
-# ThermalOps Command Center
+# Shade — FortyGuard Hackathon'26
 
-**Industrial heat-risk intelligence for safer operations.**
+**Worker safety, OSHA compliance, and heat-cost platform powered by FortyGuard's 20m hyperlocal temperature data.**
 
-ThermalOps Command Center converts geographic temperature data into an operational decision layer for industrial teams. It combines site heatmaps, risk ranking, anomaly detection, governance thresholds, explainable interventions, assessment history, exports, and an executive heat brief.
+Shade turns FortyGuard's hyperlocal heat data into a multi-site worker-safety and heat-cost platform for companies that run many outdoor/industrial worksites. It doesn't just say "it's hot" — it tells a company exactly what heat cost them today, in dollars, with the paperwork to back it up.
+
+---
 
 ## What it does
 
-- Accepts industrial site CSV files with `id`, `name`, `lat`, and `lon` columns.
-- Runs Demo Mode with local sample data or Live Mode through the FortyGuard API.
-- Ranks sites as **Critical**, **High**, **Moderate**, or **Low** using peak temperature, exceedance, persistence, and anomaly signals.
-- Displays a Google Maps thermal field with clickable site markers.
-- Flags unusual hotspots with the exact label **Anomaly Detected**.
-- Applies example governance thresholds including OSHA 35 °C and UAE 45 °C.
-- Generates plain-language recommendations such as “Halt outdoor work 12:00–15:00” and “Deploy mobile cooling unit.”
-- Produces an exactly three-sentence executive heat brief.
-- Persists assessment history and supports comparison, CSV export, and print-to-PDF reporting with limitations metadata.
+- **Fleet Risk Dashboard** — ranks all worksites as LOW/MEDIUM/HIGH/CRITICAL using FortyGuard data and sourced NIOSH/OSHA thresholds. One glance tells you where the danger is.
+- **Heat-Colored Route Map** — compares fastest vs. heat-coolest route between two sites, rendered as a blue-to-red gradient polyline on Leaflet/OSM.
+- **Heat P&L** — reframes heat as a financial ledger: hazard pay owed, productivity dollars preserved, schedule-delay claim value, and compliance readiness — every number traceable to real data or a cited source.
+- **Kelvin** — voice/text safety assistant. Deterministic backend answers, never an LLM making up numbers. Supports Web Speech API mic input with voice toggle.
+- **Compliance Reports** — generates "Shade Heat Exposure Record — Form SG-1" as PDF (ReportLab) and CSV, for site-level or company-wide rollup.
+- **Audit Log** — every risk assessment is logged and queryable, serving as the single source of truth for Kelvin and reports.
+- **CSV Upload** — ingest worksite portfolios via CSV (site_id, name, lat, lon, type). Validates US coordinates, no duplicates.
 
-## Technology
+## Case study: San Francisco Bay Area
+
+Deliberate choice. Coastal SF/Oakland stays mild (fog-cooled ~19°C) while inland Tracy/Livermore/Concord regularly hits 35-40°C+ the same day. That 20°F+ contrast is the best possible demo of FortyGuard's hyperlocal differentiator — a city-average weather API would completely miss it. Bonus: the real $182K Cal/OSHA Safeway fine happened in Tracy, part of this exact corridor.
+
+## Tech stack
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 19, TypeScript, Tailwind CSS 4, shadcn-style UI |
-| Backend | Express 4, tRPC 11 |
-| Database | MySQL/TiDB through Drizzle ORM |
-| Authentication | Manus OAuth |
-| Mapping | Google Maps through the configured Forge map proxy |
-| External climate data | FortyGuard Temperature API |
-| Analytics | Deterministic weighted risk scoring and IQR anomaly detection |
-| AI | Built-in Forge LLM integration |
-| Testing | Vitest and TypeScript checks |
+| Frontend | React 19, TypeScript, Tailwind CSS 4, Leaflet.js + OpenStreetMap |
+| Backend | Python FastAPI, httpx |
+| Database | Supabase (Postgres) with in-memory fallback |
+| PDF Generation | ReportLab |
+| Voice | Browser Web Speech API (STT + TTS) |
+| Data Source | FortyGuard Temperature API |
 
 ## Quick start
 
 ### Requirements
 
-Install Node.js LTS, Git, and pnpm. On Windows, install pnpm with:
+- Node.js 18+
+- Python 3.10+
+- pnpm or npm
 
-```bash
-npm install --global pnpm
-```
-
-### Install and run
+### 1. Clone and install
 
 ```bash
 git clone https://github.com/P2898/FortyGuard_Databaes.git
 cd FortyGuard_Databaes
-pnpm install
-pnpm check
-pnpm test
-pnpm dev
+
+# Frontend
+cd frontend && npm install && cd ..
+
+# Backend
+cd backend && pip install -r requirements.txt && cd ..
 ```
 
-Open the local URL printed by the development server, normally `http://localhost:3000`.
+### 2. Configure environment
 
-Start in **Demo Mode**. Demo Mode is the safest way to understand the dashboard before making live API requests.
-
-## Environment configuration
-
-Create a local `.env` file in the project root. Never commit it or paste real values into source code.
-
-```env
-FORTYGUARD_API_KEY=your_private_FortyGuard_key
-FORTYGUARD_BASE_URL=https://api.fortyguard.com
-DATABASE_URL=mysql://username:password@host:3306/thermalops
-JWT_SECRET=your_long_random_session_secret
-
-VITE_APP_ID=your_Manus_app_id
-OAUTH_SERVER_URL=https://api.manus.im
-VITE_OAUTH_PORTAL_URL=your_Manus_oauth_portal_url
-OWNER_OPEN_ID=your_owner_open_id
-OWNER_NAME=Your Name
-
-BUILT_IN_FORGE_API_URL=your_server_forge_url
-BUILT_IN_FORGE_API_KEY=your_server_forge_key
-VITE_FRONTEND_FORGE_API_URL=your_frontend_forge_url
-VITE_FRONTEND_FORGE_API_KEY=your_frontend_forge_key
-
-VITE_APP_TITLE=ThermalOps Command Center
-VITE_APP_LOGO=
+```bash
+cp .env.example .env
+# Edit .env and set your FortyGuard API key:
+# FORTYGUARD_API_KEY=your_key_here
 ```
 
-The FortyGuard key is used only by the server-side proxy. Do not place it in React code or expose it through a public repository. Database, OAuth, Forge, and session values are also private project configuration.
+### 3. Run
 
-## FortyGuard workflow
+**Terminal 1 — Backend:**
+```bash
+cd backend
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
 
-The application sends a geographic request to the server, receives an asynchronous `activity_id`, polls until the task completes, normalizes the result, and then calculates site-level risk. Use small U.S. test areas first. The quickstart documentation states that API coverage is U.S.-only and that Premium endpoints may require a Premium plan.
+**Terminal 2 — Frontend:**
+```bash
+cd frontend
+npm run dev
+```
 
-The official Python learning repository is available at:
+Open **http://localhost:5173** — no login required.
 
-- [FortyGuard Temperature API Quickstart](https://github.com/FortyGuard-Tech/temperature-api-quickstart)
-- [FortyGuard API documentation](https://docs-api.fortyguard.com/docs/introduction)
+## FortyGuard API request/response example
+
+**Request — Environmental parameters for Tracy Logistics Hub:**
+
+```json
+POST https://api.fortyguard.com/v1/env_params
+Headers: { "api-key": "YOUR_API_KEY", "Content-Type": "application/json" }
+Body: {
+  "latitude": 37.7397,
+  "longitude": -121.4252,
+  "temperature": 39,
+  "date_time": {
+    "start_date": "2026-08-24",
+    "start_time": "14:00",
+    "filter_type": 1
+  }
+}
+```
+
+**Response:**
+
+```json
+{
+  "data": {
+    "activity_id": "abc123...",
+    "status": "succeeded",
+    "result": {
+      "heat_index_celsius": 42.3,
+      "relative_humidity_percent": 28.5,
+      "solar_irradiance": 847.2,
+      "air_quality:idx": 45
+    }
+  }
+}
+```
+
+## What's real vs. estimated
+
+| Data point | Source |
+|---|---|
+| Site temperatures | FortyGuard 20m grid data (live) or deterministic location-based estimation (demo mode) |
+| Risk thresholds | NIOSH WBGT REL (28°C), OSHA proposed triggers (80°F/90°F), CA Indoor Heat Standard (82°F) |
+| Hazard pay owed | Company-entered rate × real hours in HIGH/CRITICAL |
+| Productivity $ preserved | SF Fed/Duke research relationship (workers lose ~1hr/day above 85°F) × hours avoided × company wage rate — labeled as estimate |
+| Schedule-delay claim value | Exceedance days × company day-rate — labeled as "evidence value, not guaranteed recovery" |
+| Compliance readiness | Status only, never priced as avoided fine |
+| Heat index calculations | Simplified Rothfusz regression from temperature + humidity |
+| Route temperature deltas | FortyGuard grid interpolated onto route segments |
+
+**Never fabricated:** market-size figures, health-outcome claims, death-prevention claims, or regulatory compliance guarantees.
 
 ## Project structure
 
-```text
-client/          React pages, components, map UI, and styling
-drizzle/         Database schema and migrations
-server/          tRPC procedures, API proxy, risk engine, and database helpers
-shared/           Shared types and constants
 ```
-
-## Validation
-
-Run the project checks before opening a pull request or deploying:
-
-```bash
-pnpm check
-pnpm test
-pnpm build
+backend/
+  app/
+    main.py              — FastAPI entry point
+    config.py             — Environment variable loading
+    database.py           — Supabase client (with in-memory fallback)
+    routers/
+      sites.py            — Site CRUD + CSV upload + Bay Area seed data
+      assessment.py       — Fleet risk assessment engine
+      heat_pl.py          — Heat P&L financial computations
+      kelvin.py           — Voice/text safety assistant
+      route.py            — Route planner with heat-colored routing
+      reports.py          — PDF/CSV compliance report generation
+    services/
+      fortyguard.py       — FortyGuard API integration (submit-poll-cache)
+      risk_scoring.py     — NIOSH/OSHA threshold classification
+      heat_pl.py          — Financial impact computation
+      kelvin.py           — Intent matching + response phrasing
+frontend/
+  src/
+    App.tsx               — Main layout with sidebar navigation
+    lib/api.ts            — API client types and functions
+    components/
+      FleetDashboard.tsx  — Ranked risk table + distribution chart
+      FleetMap.tsx        — Leaflet map with risk-colored markers
+      SiteDetail.tsx      — Per-site trend chart + env params
+      RoutePlanner.tsx    — Heat-colored route comparison
+      HeatPLScreen.tsx    — Financial impact dashboard
+      ReportsScreen.tsx   — Compliance report generation
+      KelvinPanel.tsx     — Voice/text safety assistant
+      SettingsScreen.tsx  — Company policy rates
+      UploadScreen.tsx    — CSV upload + validation
 ```
-
-## Limitations
-
-FortyGuard coverage, plan availability, request limits, and Premium endpoint access are controlled by FortyGuard. Governance thresholds in this application are configurable decision-support examples and are not legal advice or an automatic determination of regulatory compliance. Heat-risk results should be reviewed by qualified safety and operations personnel.
 
 ## License
 
-This project is maintained for the FortyGuard hackathon and subsequent prototyping. Add the project license terms before distributing it outside the intended team.
+Built for the FortyGuard Hackathon 2026. Add project license terms before distributing outside the intended team.

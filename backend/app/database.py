@@ -1,14 +1,7 @@
 """Supabase database client — single source of truth for all persistent data."""
 
-import os
-from dotenv import load_dotenv
 from supabase import create_client, Client
-
-load_dotenv(os.path.join(os.path.dirname(__file__), '..', '..', '.env'))
-
-SUPABASE_URL = os.getenv("SUPABASE_URL", "")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
-SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
+from app.config import SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_KEY
 
 _client: Client | None = None
 _service_client: Client | None = None

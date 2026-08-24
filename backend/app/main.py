@@ -1,13 +1,21 @@
 """Shade — FastAPI backend entry point."""
 
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import sites, assessment, heat_pl, kelvin
+from app.routers import sites, assessment, heat_pl, kelvin, route, reports
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: seed demo sites
+    await sites.seed_sites_on_startup()
+    yield
 
 app = FastAPI(
     title="Shade API",
     description="Worker safety, OSHA compliance, and heat-cost platform powered by FortyGuard",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # CORS — allow frontend origin
@@ -24,6 +32,8 @@ app.include_router(sites.router)
 app.include_router(assessment.router)
 app.include_router(heat_pl.router)
 app.include_router(kelvin.router)
+app.include_router(route.router)
+app.include_router(reports.router)
 
 
 @app.get("/api/health")
