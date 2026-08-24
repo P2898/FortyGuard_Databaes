@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import L from "leaflet";
 import { Site, Assessment } from "../lib/api";
 import { getRiskColor } from "./helpers";
+import { addPegmanToMap } from "./PegmanControl";
 
 export default function FleetMap({
   sites,
@@ -21,6 +22,7 @@ export default function FleetMap({
       maxZoom: 18,
     }).addTo(m);
     mapInstance.current = m;
+    addPegmanToMap(m);
 
     return () => { m.remove(); mapInstance.current = null; };
   }, []);

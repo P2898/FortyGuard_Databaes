@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import L from "leaflet";
 import { planRoute, getRouteSites, RouteSite, RouteResult } from "../lib/api";
-import { RoutePlayback, AvatarGender, AvatarOutfit } from "./RouteAvatar";
+import { addPegmanToMap } from "./PegmanControl";
 
 function tempToColor(tempC: number): string {
   if (tempC < 22) return "#22c55e";
@@ -22,19 +22,13 @@ export default function RoutePlanner() {
   const [result, setResult] = useState<RouteResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [avatarGender, setAvatarGender] = useState<AvatarGender>("default");
-  const [avatarOutfit, setAvatarOutfit] = useState<AvatarOutfit>("default");
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
   const layersRef = useRef<L.Layer[]>([]);
 
-  // Load sites and saved preferences
+  // Load sites
   useEffect(() => {
     getRouteSites().then(setSites).catch(console.error);
-    const savedGender = localStorage.getItem("shade_avatar_gender") as AvatarGender | null;
-    const savedOutfit = localStorage.getItem("shade_avatar_outfit") as AvatarOutfit | null;
-    if (savedGender) setAvatarGender(savedGender);
-    if (savedOutfit) setAvatarOutfit(savedOutfit);
   }, []);
 
   useEffect(() => {
@@ -45,6 +39,7 @@ export default function RoutePlanner() {
       maxZoom: 18,
     }).addTo(m);
     mapInstance.current = m;
+    addPegmanToMap(m);
     return () => { m.remove(); mapInstance.current = null; };
   }, []);
 
@@ -268,16 +263,6 @@ export default function RoutePlanner() {
               <div style={{ fontSize: 12, color: "#64748b" }}>Coolest avg</div>
               <div style={{ fontSize: 20, fontWeight: 700, marginTop: 4, color: tempToColor(result.coolest_route.avg_temp_c) }}>{result.coolest_route.avg_temp_c}\u00b0C</div>
             </div>
-          </div>
-
-          {/* Route playback */}
-          <div style={{ marginTop: 16 }}>
-            <RoutePlayback
-              route={result.coolest_route.coordinates}
-              gender={avatarGender}
-              outfit={avatarOutfit}
-              state={result.temp_delta_f > 5 ? "alert" : result.temp_delta_f > 2 ? "attention" : "calm"}
-            />
           </div>
 
           {/* Legend */}

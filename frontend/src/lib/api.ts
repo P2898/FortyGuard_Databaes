@@ -149,5 +149,19 @@ export const generateCSVReport = async (req: { scope: string; site_id?: string }
   return blob;
 };
 
+// Street View heat data (pegman drop)
+export interface HeatAtPoint {
+  lat: number;
+  lon: number;
+  temperature_c: number;
+  heat_index_c: number;
+  humidity: number;
+  solar_irradiance: number;
+  aqi: number;
+}
+
+export const getHeatAtPoint = (lat: number, lon: number) =>
+  fetchJSON<HeatAtPoint>(`/streetview/heat-data?lat=${lat.toFixed(6)}&lon=${lon.toFixed(6)}`);
+
 // Config
 export const getConfig = () => fetchJSON<any>('/config');
