@@ -15,6 +15,7 @@ class RouteRequest(BaseModel):
     dest_lon: float
     origin_name: str = "Origin"
     dest_name: str = "Destination"
+    travel_mode: str = "drive"
 
 
 class RouteResponse(BaseModel):
@@ -26,6 +27,10 @@ class RouteResponse(BaseModel):
     temp_delta_c: float
     time_delta_min: int
     distance_km: float
+    travel_mode: str = "drive"
+
+class HelpfulRequest(BaseModel):
+    helpful: bool
 
 
 def _haversine_km(lat1, lon1, lat2, lon2):
@@ -188,7 +193,20 @@ async def plan_route(req: RouteRequest):
         temp_delta_c=round(temp_delta_c, 1),
         time_delta_min=time_delta_min,
         distance_km=round(distance_km, 1),
+        travel_mode=req.travel_mode,
     )
+
+
+@router.post("/helpful")
+async def mark_helpful(req: HelpfulRequest):
+    """Mark the last route as helpful or not, writing to audit log."""
+    if is_configured():
+        try:
+            sb = get_service_client()
+            sb.table("route_queries").update({"route_helpful": req.helpful}).order("id", desc=True).limit(1).execute()
+        except Exception:
+            pass
+    return {"ok": True, "helpful": req.helpful}
 
 
 @router.get("/sites")

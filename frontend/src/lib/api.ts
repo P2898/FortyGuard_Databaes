@@ -130,8 +130,11 @@ export interface RouteSite {
   longitude: number;
 }
 
-export const planRoute = (req: { origin_lat: number; origin_lon: number; dest_lat: number; dest_lon: number; origin_name?: string; dest_name?: string }) =>
+export const planRoute = (req: { origin_lat: number; origin_lon: number; dest_lat: number; dest_lon: number; origin_name?: string; dest_name?: string; travel_mode?: string }) =>
   fetchJSON<RouteResult>('/routes/plan', { method: 'POST', body: JSON.stringify(req) });
+
+export const markRouteHelpful = (helpful: boolean) =>
+  fetchJSON<any>('/routes/helpful', { method: 'POST', body: JSON.stringify({ helpful }) });
 
 export const getRouteSites = () => fetchJSON<RouteSite[]>('/routes/sites');
 
