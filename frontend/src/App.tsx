@@ -136,21 +136,17 @@ export default function App() {
             gap: 10,
           }}
         >
-          <div
+          <img
+            src="/shade-logo.jpeg"
+            alt="Shade logo"
             style={{
-              width: 32,
-              height: 32,
+              width: 36,
+              height: 36,
               borderRadius: 8,
-              background: "linear-gradient(135deg, #F2994A, #1B2A4A)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 16,
+              objectFit: "contain",
               flexShrink: 0,
             }}
-          >
-            {"\u2600"}
-          </div>
+          />
           {!sidebarCollapsed && (
             <div>
               <h1 style={{ fontSize: 18, fontWeight: 800, letterSpacing: -0.5, color: "#e2e8f0", margin: 0 }}>
@@ -233,6 +229,8 @@ export default function App() {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <img src="/shade-logo.jpeg" alt="Shade" style={{ width: 24, height: 24, borderRadius: 4 }} />
+            <span style={{ fontSize: 15, fontWeight: 700, color: "#e2e8f0" }}>Shade</span>
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
               className="sidebar-desktop"
