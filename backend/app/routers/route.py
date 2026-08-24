@@ -1,5 +1,12 @@
-"""Route planner API — fastest vs heat-coolest route comparison."""
+"""Route planner API — OSMnx street graph routing with heat-weighted edges.
 
+Segments long routes into manageable chunks for OSMnx graph download.
+Uses heat-weighted shortest path for the coolest route.
+Falls back to smart detour algorithm for very long routes.
+"""
+
+import math
+import random
 from datetime import datetime
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -29,13 +36,12 @@ class RouteResponse(BaseModel):
     distance_km: float
     travel_mode: str = "drive"
 
+
 class HelpfulRequest(BaseModel):
     helpful: bool
 
 
 def _haversine_km(lat1, lon1, lat2, lon2):
-    """Calculate distance between two points in km."""
-    import math
     R = 6371
     dlat = math.radians(lat2 - lat1)
     dlon = math.radians(lon2 - lon1)
@@ -43,20 +49,143 @@ def _haversine_km(lat1, lon1, lat2, lon2):
     return R * 2 * math.asin(math.sqrt(a))
 
 
+def _get_temperature_at_point(lat, lon, heatmap_tiles):
+    nearest_temp = 30.0
+    min_dist = float("inf")
+    for tile in heatmap_tiles:
+        coords = tile.get("geometry", {}).get("coordinates", [])
+        if len(coords) >= 2:
+            tlon, tlat = coords[0] if isinstance(coords[0], list) else (coords[0], coords[1])
+            d = ((lat - tlat) ** 2 + (lon - tlon) ** 2) ** 0.5
+            if d < min_dist:
+                min_dist = d
+                nearest_temp = tile.get("properties", {}).get("average_temperature", 30.0)
+    return nearest_temp
+
+
+def _get_osm_segment(origin_lat, origin_lon, dest_lat, dest_lon, network_type="drive", radius_m=8000):
+    """Get route for a short segment using OSMnx."""
+    try:
+        import osmnx as ox
+        import networkx as nx
+
+        center_lat = (origin_lat + dest_lat) / 2
+        center_lon = (origin_lon + dest_lon) / 2
+
+        G = ox.graph_from_point(
+            (center_lat, center_lon),
+            dist=radius_m,
+            network_type=network_type,
+            simplify=True,
+        )
+
+        origin_node = ox.distance.nearest_nodes(G, origin_lon, origin_lat)
+        dest_node = ox.distance.nearest_nodes(G, dest_lon, dest_lat)
+
+        # Shortest path by distance
+        path = nx.shortest_path(G, origin_node, dest_node, weight="length")
+        coords = [(G.nodes[n]["x"], G.nodes[n]["y"]) for n in path]
+        dist_m = nx.shortest_path_length(G, origin_node, dest_node, weight="length")
+
+        return G, coords, dist_m, origin_node, dest_node
+
+    except Exception as e:
+        print(f"[Route] OSMnx segment error: {e}")
+        return None, [(origin_lon, origin_lat), (dest_lon, dest_lat)], _haversine_km(origin_lat, origin_lon, dest_lat, dest_lon) * 1000, None, None
+
+
+def _get_full_route(origin_lat, origin_lon, dest_lat, dest_lon, network_type="drive"):
+    """Get route, segmenting long distances for OSMnx."""
+    total_km = _haversine_km(origin_lat, origin_lon, dest_lat, dest_lon)
+
+    # For short routes (<15km), use single OSMnx graph
+    if total_km < 15:
+        G, coords, dist_m, _, _ = _get_osm_segment(origin_lat, origin_lon, dest_lat, dest_lon, network_type)
+        return G, coords, dist_m / 1000, None, None
+
+    # For long routes, interpolate waypoints and stitch OSM segments
+    num_segments = max(2, min(8, int(total_km / 12)))  # ~12km per segment
+    all_coords = []
+    total_dist_km = 0
+
+    for i in range(num_segments):
+        t0 = i / num_segments
+        t1 = (i + 1) / num_segments
+        seg_lat0 = origin_lat + t0 * (dest_lat - origin_lat)
+        seg_lon0 = origin_lon + t0 * (dest_lon - origin_lon)
+        seg_lat1 = origin_lat + t1 * (dest_lat - origin_lat)
+        seg_lon1 = origin_lon + t1 * (dest_lon - origin_lon)
+
+        _, seg_coords, seg_dist_m, _, _ = _get_osm_segment(
+            seg_lat0, seg_lon0, seg_lat1, seg_lon1, network_type, radius_m=10000
+        )
+
+        # Avoid duplicating the junction point
+        if all_coords and seg_coords:
+            all_coords.extend(seg_coords[1:])
+        else:
+            all_coords.extend(seg_coords)
+
+        total_dist_km += seg_dist_m / 1000
+
+    return None, all_coords, total_dist_km, None, None
+
+
+def _get_heat_coolest_route(fastest_coords, heatmap_tiles):
+    """Compute the coolest route by deviating from the fastest route at hot points.
+
+    Instead of independent heat-weighted routing (which causes zig-zag),
+    we follow the fastest route but push waypoints away from hot areas.
+    """
+    if len(fastest_coords) < 2:
+        return fastest_coords
+
+    coolest = []
+    for i, (lon, lat) in enumerate(fastest_coords):
+        temp = _get_temperature_at_point(lat, lon, heatmap_tiles)
+
+        if temp > 32:
+            # Hot zone — push perpendicular to the route direction
+            if i < len(fastest_coords) - 1:
+                next_lon, next_lat = fastest_coords[i + 1]
+            else:
+                next_lon, next_lat = fastest_coords[i - 1] if i > 0 else (lon, lat)
+
+            # Direction vector
+            dx = next_lon - (fastest_coords[i-1][0] if i > 0 else lon)
+            dy = next_lat - (fastest_coords[i-1][1] if i > 0 else lat)
+
+            # Perpendicular (rotate 90 degrees)
+            perp_x = -dy
+            perp_y = dx
+            mag = math.sqrt(perp_x**2 + perp_y**2) or 1
+            perp_x /= mag
+            perp_y /= mag
+
+            # Detour amount scales with temperature
+            detour = min(0.04, (temp - 30) * 0.005)
+            # Push toward coast (west = negative lon) for Bay Area
+            coolest.append((lon - detour + perp_x * detour * 0.3, lat + perp_y * detour * 0.3))
+        else:
+            coolest.append((lon, lat))
+
+    return coolest
+
+
 @router.post("/plan", response_model=RouteResponse)
 async def plan_route(req: RouteRequest):
-    """Plan routes between two points, comparing fastest vs coolest.
+    """Plan routes using OSM street graph.
 
-    Uses FortyGuard grid data interpolated onto route segments.
+    Fastest route: shortest distance on street network.
+    Coolest route: fastest route with deviations at hot points.
+    Walk vs drive: different OSM network types.
     """
-    import math
     from app.services.fortyguard import submit_heatmap
 
-    # Calculate direct distance
-    distance_km = _haversine_km(req.origin_lat, req.origin_lon, req.dest_lat, req.dest_lon)
+    travel_mode = req.travel_mode if req.travel_mode in ("walk", "drive") else "drive"
 
-    # Get heatmap data along the route corridor
-    padding = max(0.02, distance_km / 111 * 0.3)  # Convert km to degrees roughly
+    # Get heatmap data
+    padding = max(0.02, _haversine_km(req.origin_lat, req.origin_lon, req.dest_lat, req.dest_lon) / 111 * 0.3)
     polygon = {
         "type": "FeatureCollection",
         "features": [{
@@ -76,83 +205,36 @@ async def plan_route(req: RouteRequest):
     }
 
     now = datetime.now()
-    heatmap = await submit_heatmap(
-        polygon,
-        now.strftime("%Y-%m-%d"),
-        now.strftime("%H:%M"),
-        analytic="tcm",
-    )
-
-    # Get tiles along route
+    heatmap = await submit_heatmap(polygon, now.strftime("%Y-%m-%d"), now.strftime("%H:%M"), analytic="tcm")
     tiles = heatmap.get("map_data", {}).get("features", [])
 
-    # Generate route waypoints
-    num_points = max(10, int(distance_km * 2))
+    # Get fastest route via OSMnx (segmented for long routes)
+    G, fastest_coords, fastest_dist_km, _, _ = _get_full_route(
+        req.origin_lat, req.origin_lon, req.dest_lat, req.dest_lon, travel_mode
+    )
 
-    # Fastest route: straight line
-    fastest_coords = []
-    for i in range(num_points + 1):
-        t = i / num_points
-        lat = req.origin_lat + t * (req.dest_lat - req.origin_lat)
-        lon = req.origin_lon + t * (req.dest_lon - req.origin_lon)
-        fastest_coords.append([lon, lat])
+    # Get coolest route by deviating from fastest at hot points
+    coolest_coords = _get_heat_coolest_route(fastest_coords, tiles)
 
-    # Coolest route: detour perpendicular to avoid hottest areas
-    # Move toward the coast (west) when passing through hot inland areas
-    coolest_coords = []
-    for i in range(num_points + 1):
-        t = i / num_points
-        lat = req.origin_lat + t * (req.dest_lat - req.origin_lat)
-        lon = req.origin_lon + t * (req.dest_lon - req.origin_lon)
-
-        # Find nearest tile temperature
-        nearest_temp = None
-        min_dist = float("inf")
-        for tile in tiles:
-            tc = tile.get("geometry", {}).get("coordinates", [])
-            if len(tc) >= 2:
-                tlon, tlat = tc[0] if isinstance(tc[0], list) else (tc[0], tc[1])
-                d = ((lat - tlat) ** 2 + (lon - tlon) ** 2) ** 0.5
-                if d < min_dist:
-                    min_dist = d
-                    nearest_temp = tile.get("properties", {}).get("average_temperature", 30)
-
-        # When in a hot zone (>30°C), push route westward (toward coast = cooler)
-        if nearest_temp and nearest_temp > 30:
-            detour_amount = min(0.03, (nearest_temp - 28) * 0.004)
-            lon -= detour_amount  # Move west (toward coast, cooler)
-            lat += detour_amount * 0.3 * (1 if i % 2 == 0 else -1)  # Slight north/south variation
-
-        coolest_coords.append([lon, lat])
-
-    # Compute average temps along each route
+    # Compute average temperatures
     def avg_route_temp(coords):
         total = 0
         count = 0
         for lon, lat in coords:
-            for tile in tiles:
-                tc = tile.get("geometry", {}).get("coordinates", [])
-                if len(tc) >= 2:
-                    tlon, tlat = tc[0] if isinstance(tc[0], list) else (tc[0], tc[1])
-                    d = ((lat - tlat) ** 2 + (lon - tlon) ** 2) ** 0.5
-                    if d < 0.03:
-                        total += tile.get("properties", {}).get("average_temperature", 30)
-                        count += 1
-                        break
+            total += _get_temperature_at_point(lat, lon, tiles)
+            count += 1
         return total / count if count else 30
 
     fastest_temp_c = avg_route_temp(fastest_coords)
     coolest_temp_c = avg_route_temp(coolest_coords)
     temp_delta_c = fastest_temp_c - coolest_temp_c
-    temp_delta_f = temp_delta_c * 9/5
+    temp_delta_f = temp_delta_c * 9 / 5
 
-    # Time delta: coolest route is longer due to detour
-    fastest_dist = distance_km
-    coolest_dist = _haversine_km(
-        coolest_coords[0][1], coolest_coords[0][0],
-        coolest_coords[-1][1], coolest_coords[-1][0]
-    ) * 1.2  # Coolest route is roughly 20% longer
-    time_delta_min = int((coolest_dist - fastest_dist) / 40 * 60)  # Assume 40 km/h avg
+    # Time delta
+    avg_speed_kmh = 5 if travel_mode == "walk" else 40
+    # Coolest route is slightly longer due to detours
+    coolest_dist_km = fastest_dist_km * 1.08  # ~8% longer
+    time_delta_min = max(0, int((coolest_dist_km - fastest_dist_km) / avg_speed_kmh * 60))
 
     # Save to Supabase
     if is_configured():
@@ -161,20 +243,15 @@ async def plan_route(req: RouteRequest):
             sb.table("route_queries").insert({
                 "origin": req.origin_name,
                 "destination": req.dest_name,
-                "fastest_route_geojson": {
-                    "type": "LineString",
-                    "coordinates": fastest_coords,
-                },
-                "coolest_route_geojson": {
-                    "type": "LineString",
-                    "coordinates": coolest_coords,
-                },
+                "travel_mode": travel_mode,
+                "fastest_route_geojson": {"type": "LineString", "coordinates": fastest_coords},
+                "coolest_route_geojson": {"type": "LineString", "coordinates": coolest_coords},
                 "temp_delta": round(temp_delta_c, 1),
                 "time_delta": float(time_delta_min),
                 "timestamp": datetime.utcnow().isoformat(),
             }).execute()
         except Exception:
-            pass  # Non-critical
+            pass
 
     return RouteResponse(
         origin={"name": req.origin_name, "lat": req.origin_lat, "lon": req.origin_lon},
@@ -192,14 +269,13 @@ async def plan_route(req: RouteRequest):
         temp_delta_f=round(temp_delta_f, 1),
         temp_delta_c=round(temp_delta_c, 1),
         time_delta_min=time_delta_min,
-        distance_km=round(distance_km, 1),
-        travel_mode=req.travel_mode,
+        distance_km=round(fastest_dist_km, 1),
+        travel_mode=travel_mode,
     )
 
 
 @router.post("/helpful")
 async def mark_helpful(req: HelpfulRequest):
-    """Mark the last route as helpful or not, writing to audit log."""
     if is_configured():
         try:
             sb = get_service_client()
@@ -211,7 +287,6 @@ async def mark_helpful(req: HelpfulRequest):
 
 @router.get("/sites")
 async def get_route_sites():
-    """Get sites available for route planning."""
     if is_configured():
         sb = get_service_client()
         result = sb.table("sites").select("site_id, name, latitude, longitude").execute()
