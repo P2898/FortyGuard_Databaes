@@ -1,13 +1,15 @@
 import L from "leaflet";
 
 /**
- * PegmanControl — Google Maps-style draggable pegman for Leaflet.
+ * PegmanControl — Google Maps-style pegman for Leaflet.
  *
- * Adds an orange person icon in the bottom-right corner of the map.
- * When dragged and dropped onto the map, it:
- * 1. Places a pegman marker at the drop location
- * 2. Fetches FortyGuard heat data for that point
- * 3. Opens a popup with temperature, heat index, humidity, solar + Mapillary link
+ * Two ways to inspect a point:
+ * 1. Click the pegman icon → it activates "drop mode" → click anywhere on the map
+ * 2. Drag the pegman onto the map (HTML5 drag-and-drop)
+ * 3. Shift+Click on the map (always works as fallback)
+ *
+ * Shows temperature, heat index, humidity, solar irradiance, AQI
+ * and a link to Mapillary street-level imagery.
  */
 
 const PEGMAN_SVG = `
@@ -84,7 +86,8 @@ async function fetchHeatData(
     );
     if (!resp.ok) return null;
     return await resp.json();
-  } catch {
+  } catch (e) {
+    console.error("[Pegman] fetchHeatData error:", e);
     return null;
   }
 }
@@ -192,34 +195,96 @@ function buildPopupHTML(
 }
 
 /**
+ * Place a pegman marker at the given location and load heat data.
+ */
+function placePegmanMarker(
+  map: L.Map,
+  lat: number,
+  lng: number,
+  markerRef: { current: L.Marker | null }
+) {
+  // Remove previous
+  if (markerRef.current) {
+    map.removeLayer(markerRef.current);
+    markerRef.current = null;
+  }
+
+  const markerIcon = L.divIcon({
+    className: "pegman-marker",
+    html: PEGMAN_MARKER_SVG,
+    iconSize: [32, 52],
+    iconAnchor: [16, 48],
+    popupAnchor: [0, -48],
+  });
+
+  const marker = L.marker([lat, lng], { icon: markerIcon })
+    .addTo(map)
+    .bindPopup(
+      `<div style="min-width:290px;font-family:system-ui;text-align:center;padding:20px">
+        <div style="font-size:13px;color:#6b7280">⏳ Loading heat data...</div>
+        <div style="margin-top:8px;font-size:11px;color:#9ca3af">📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}</div>
+      </div>`,
+      { maxWidth: 360, minWidth: 300 }
+    )
+    .openPopup();
+
+  // Tag as pegman so FleetMap doesn't remove it
+  (marker as any).__pegman = true;
+  markerRef.current = marker;
+
+  // Fetch heat data and update popup
+  fetchHeatData(lat, lng).then((data) => {
+    if (marker === markerRef.current) {
+      marker.setPopupContent(buildPopupHTML(lat, lng, data));
+    }
+  });
+}
+
+/**
  * Add a draggable pegman control to a Leaflet map.
  * Drop the pegman anywhere on the map to inspect street-level heat data.
  */
 export function addPegmanToMap(map: L.Map): (() => void) | void {
-  // 1. Create the pegman control
+  // Shared state
+  let dropMode = false;
+  let pegmanDragging = false;
+  const markerRef: { current: L.Marker | null } = { current: null };
+
+  // 1. Create the pegman control — click to toggle drop mode, drag for drag-and-drop
   const PegmanControl = L.Control.extend({
     options: { position: "bottomright" as const },
 
     onAdd: function () {
       const container = L.DomUtil.create("div", "leaflet-pegman-control");
-      container.innerHTML = `<div class="pegman-icon" draggable="true" title="Drag to map — inspect heat data at any point">${PEGMAN_SVG}</div>`;
+      container.style.cssText = "cursor:pointer;border-radius:6px;padding:2px;transition:background 0.15s;";
+      container.innerHTML = `<div class="pegman-icon" draggable="true" title="Click map to inspect · Or drag pegman onto map">${PEGMAN_SVG}</div>`;
 
       const pegmanEl = container.querySelector(".pegman-icon") as HTMLElement;
 
+      // Drag start
       pegmanEl.addEventListener("dragstart", (e: DragEvent) => {
+        pegmanDragging = true;
         e.dataTransfer!.setData("text/plain", "pegman");
         e.dataTransfer!.effectAllowed = "copy";
-        // Create a transparent drag image so the default ghost doesn't show
+        // Show pegman as ghost
         const ghost = document.createElement("div");
-        ghost.style.opacity = "0";
+        ghost.innerHTML = PEGMAN_SVG;
+        ghost.style.cssText = "opacity:0.8;position:absolute;top:-9999px;";
         document.body.appendChild(ghost);
-        e.dataTransfer!.setDragImage(ghost, 0, 0);
+        e.dataTransfer!.setDragImage(ghost, 14, 40);
         setTimeout(() => document.body.removeChild(ghost), 0);
-        map.getContainer().classList.add("pegman-dragging");
       });
 
       pegmanEl.addEventListener("dragend", () => {
-        map.getContainer().classList.remove("pegman-dragging");
+        pegmanDragging = false;
+      });
+
+      // Click on pegman — toggle drop mode
+      pegmanEl.addEventListener("click", (e: Event) => {
+        e.stopPropagation();
+        dropMode = !dropMode;
+        container.style.background = dropMode ? "rgba(242,153,74,0.3)" : "";
+        (container.querySelector(".pegman-icon") as HTMLElement).style.transform = dropMode ? "scale(1.1)" : "";
       });
 
       L.DomEvent.disableClickPropagation(container);
@@ -230,111 +295,54 @@ export function addPegmanToMap(map: L.Map): (() => void) | void {
 
   new PegmanControl().addTo(map);
 
-  // 2. Drop handler on the map container
+  // 2. Drop handler on the map container (HTML5 drag-and-drop)
   const mapContainer = map.getContainer();
-  let currentPopupMarker: L.Marker | null = null;
 
   mapContainer.addEventListener("dragover", (e: DragEvent) => {
-    if (!mapContainer.classList.contains("pegman-dragging")) return;
+    if (!pegmanDragging) return;
     e.preventDefault();
+    e.stopPropagation();
     e.dataTransfer!.dropEffect = "copy";
   });
 
-  mapContainer.addEventListener("drop", async (e: DragEvent) => {
-    if (!mapContainer.classList.contains("pegman-dragging")) return;
+  mapContainer.addEventListener("drop", (e: DragEvent) => {
+    if (!pegmanDragging) return;
     e.preventDefault();
-    mapContainer.classList.remove("pegman-dragging");
+    e.stopPropagation();
+    pegmanDragging = false;
 
-    // Convert screen coords to map coords
     const rect = mapContainer.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     const latlng = map.containerPointToLatLng(L.point(x, y));
 
-    // Remove previous pegman marker
-    if (currentPopupMarker) {
-      map.removeLayer(currentPopupMarker);
-      currentPopupMarker = null;
-    }
-
-    // Place pegman marker with pin style
-    const markerIcon = L.divIcon({
-      className: "pegman-marker",
-      html: PEGMAN_MARKER_SVG,
-      iconSize: [32, 52],
-      iconAnchor: [16, 48],
-      popupAnchor: [0, -48],
-    });
-
-    const marker = L.marker([latlng.lat, latlng.lng], { icon: markerIcon })
-      .addTo(map)
-      .bindPopup(
-        `<div style="min-width:290px;font-family:system-ui;text-align:center;padding:20px">
-          <div style="font-size:13px;color:#6b7280">Loading heat data...</div>
-          <div style="margin-top:8px;font-size:11px;color:#9ca3af">📍 ${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}</div>
-        </div>`,
-        { maxWidth: 360, minWidth: 300 }
-      )
-      .openPopup();
-
-    // Tag as pegman so FleetMap doesn't remove it
-    (marker as any).__pegman = true;
-    currentPopupMarker = marker;
-
-    // Fetch heat data and update popup
-    const data = await fetchHeatData(latlng.lat, latlng.lng);
-    if (marker === currentPopupMarker) {
-      marker.setPopupContent(buildPopupHTML(latlng.lat, latlng.lng, data));
-    }
+    placePegmanMarker(map, latlng.lat, latlng.lng, markerRef);
   });
 
-  // 3. Click on map also works as fallback (Shift+Click to place pegman)
-  const clickHandler = async (e: L.LeafletMouseEvent) => {
-    // Only if Shift+Click (to not interfere with normal map clicks)
-    if (!e.originalEvent.shiftKey) return;
+  // 3. Click handler — works in drop mode OR Shift+Click
+  const clickHandler = (e: L.LeafletMouseEvent) => {
+    if (!dropMode && !e.originalEvent.shiftKey) return;
+
+    // Reset drop mode
+    dropMode = false;
+    const ctrl = mapContainer.querySelector(".leaflet-pegman-control") as HTMLElement;
+    if (ctrl) {
+      ctrl.style.background = "";
+      const icon = ctrl.querySelector(".pegman-icon") as HTMLElement;
+      if (icon) icon.style.transform = "";
+    }
 
     const { lat, lng } = e.latlng;
-
-    if (currentPopupMarker) {
-      map.removeLayer(currentPopupMarker);
-      currentPopupMarker = null;
-    }
-
-    const markerIcon = L.divIcon({
-      className: "pegman-marker",
-      html: PEGMAN_MARKER_SVG,
-      iconSize: [32, 52],
-      iconAnchor: [16, 48],
-      popupAnchor: [0, -48],
-    });
-
-    const marker = L.marker([lat, lng], { icon: markerIcon })
-      .addTo(map)
-      .bindPopup(
-        `<div style="min-width:290px;font-family:system-ui;text-align:center;padding:20px">
-          <div style="font-size:13px;color:#6b7280">Loading heat data...</div>
-        </div>`,
-        { maxWidth: 360, minWidth: 300 }
-      )
-      .openPopup();
-
-    // Tag as pegman so FleetMap doesn't remove it
-    (marker as any).__pegman = true;
-    currentPopupMarker = marker;
-
-    const data = await fetchHeatData(lat, lng);
-    if (marker === currentPopupMarker) {
-      marker.setPopupContent(buildPopupHTML(lat, lng, data));
-    }
+    placePegmanMarker(map, lat, lng, markerRef);
   };
 
   map.on("click", clickHandler);
 
-  // Return cleanup function
+  // Cleanup
   return () => {
     map.off("click", clickHandler);
-    if (currentPopupMarker) {
-      map.removeLayer(currentPopupMarker);
+    if (markerRef.current) {
+      map.removeLayer(markerRef.current);
     }
   };
 }
