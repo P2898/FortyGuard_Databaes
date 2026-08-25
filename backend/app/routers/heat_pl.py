@@ -100,18 +100,21 @@ async def get_heat_pl(date: str = "", site_count: int = 8):
         site_count=site_count,
     )
 
-    # Save to ledger in Supabase
+    # Save to ledger in Supabase (table may not exist yet — fail gracefully)
     if is_configured():
-        sb = get_service_client()
-        for line in result.lines:
-            if line.amount > 0:
-                sb.table("heat_pl_ledger").insert({
-                    "date": date_str,
-                    "hazard_pay_owed": line.amount if "hazard" in line.label.lower() else 0,
-                    "productivity_dollars": line.amount if "productivity" in line.label.lower() else 0,
-                    "delay_claim_value": line.amount if "delay" in line.label.lower() else 0,
-                    "compliance_status": "active",
-                }).execute()
+        try:
+            sb = get_service_client()
+            for line in result.lines:
+                if line.amount > 0:
+                    sb.table("heat_pl_ledger").insert({
+                        "date": date_str,
+                        "hazard_pay_owed": line.amount if "hazard" in line.label.lower() else 0,
+                        "productivity_dollars": line.amount if "productivity" in line.label.lower() else 0,
+                        "delay_claim_value": line.amount if "delay" in line.label.lower() else 0,
+                        "compliance_status": "active",
+                    }).execute()
+        except Exception:
+            pass  # Table may not exist — don't crash the endpoint
 
     return {
         "total_cost": result.total_cost,
