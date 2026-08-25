@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Site, generateReport, generateCSVReport } from "../lib/api";
+import { useTheme } from "../lib/theme";
 
 export default function ReportsScreen({ sites }: { sites: Site[] }) {
+  const { colors } = useTheme();
   const [scope, setScope] = useState<"site" | "company">("site");
   const [siteId, setSiteId] = useState("");
   const [generating, setGenerating] = useState(false);
@@ -36,17 +38,17 @@ export default function ReportsScreen({ sites }: { sites: Site[] }) {
 
   return (
     <div>
-      <h2 style={{ fontSize: 22, fontWeight: 700 }}>Compliance Reports</h2>
-      <p style={{ color: "#94a3b8", marginTop: 2 }}>
+      <h2 style={{ fontSize: 22, fontWeight: 700, color: colors.text }}>Compliance Reports</h2>
+      <p style={{ color: colors.textSecondary, marginTop: 2 }}>
         Generate OSHA-ready heat exposure records {"\u2014"} Form SG-1
       </p>
 
       <div
         style={{
-          background: "#111827",
+          background: colors.surface,
           borderRadius: 12,
           padding: 24,
-          border: "1px solid #1e293b",
+          border: `1px solid ${colors.border}`,
           marginTop: 20,
           maxWidth: 560,
         }}
@@ -59,10 +61,10 @@ export default function ReportsScreen({ sites }: { sites: Site[] }) {
               onClick={() => setScope(s)}
               style={{
                 padding: "10px 20px",
-                background: scope === s ? "#06b6d4" : "#1e293b",
-                color: scope === s ? "#fff" : "#94a3b8",
+                background: scope === s ? colors.accent : colors.surfaceHover,
+                color: scope === s ? "#fff" : colors.textSecondary,
                 borderRadius: 8,
-                border: scope === s ? "1px solid #06b6d4" : "1px solid #334155",
+                border: scope === s ? `1px solid ${colors.accent}` : `1px solid ${colors.borderLight}`,
                 cursor: "pointer",
                 fontWeight: 600,
                 fontSize: 14,
@@ -77,7 +79,7 @@ export default function ReportsScreen({ sites }: { sites: Site[] }) {
         {/* Site selector */}
         {scope === "site" && (
           <div style={{ marginBottom: 20 }}>
-            <label style={{ fontSize: 13, color: "#94a3b8", display: "block", marginBottom: 6 }}>
+            <label style={{ fontSize: 13, color: colors.textSecondary, display: "block", marginBottom: 6 }}>
               Select site for report
             </label>
             <select
@@ -86,10 +88,10 @@ export default function ReportsScreen({ sites }: { sites: Site[] }) {
               style={{
                 width: "100%",
                 padding: "10px 14px",
-                border: "1px solid #334155",
+                border: `1px solid ${colors.borderLight}`,
                 borderRadius: 8,
-                background: "#0f172a",
-                color: "#e2e8f0",
+                background: colors.bg,
+                color: colors.text,
                 fontSize: 14,
               }}
             >
@@ -107,12 +109,12 @@ export default function ReportsScreen({ sites }: { sites: Site[] }) {
           <div
             style={{
               padding: "12px 16px",
-              background: "#0f172a",
+              background: colors.bg,
               borderRadius: 8,
-              border: "1px solid #1e293b",
+              border: `1px solid ${colors.border}`,
               marginBottom: 20,
               fontSize: 13,
-              color: "#94a3b8",
+              color: colors.textSecondary,
             }}
           >
             Company rollup will include all {sites.length} sites in a single report with summary + individual site sections.
@@ -126,7 +128,7 @@ export default function ReportsScreen({ sites }: { sites: Site[] }) {
             disabled={generating || (scope === "site" && !siteId)}
             style={{
               padding: "10px 24px",
-              background: generating || (scope === "site" && !siteId) ? "#334155" : "#dc2626",
+              background: generating || (scope === "site" && !siteId) ? colors.borderLight : "#dc2626",
               color: "#fff",
               borderRadius: 8,
               border: "none",
@@ -145,7 +147,7 @@ export default function ReportsScreen({ sites }: { sites: Site[] }) {
             disabled={generating || (scope === "site" && !siteId)}
             style={{
               padding: "10px 24px",
-              background: generating || (scope === "site" && !siteId) ? "#334155" : "#16a34a",
+              background: generating || (scope === "site" && !siteId) ? colors.borderLight : "#16a34a",
               color: "#fff",
               borderRadius: 8,
               border: "none",
@@ -178,10 +180,10 @@ export default function ReportsScreen({ sites }: { sites: Site[] }) {
       </div>
 
       {/* Report info */}
-      <div style={{ marginTop: 24, maxWidth: 560, fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>
-        <p><strong style={{ color: "#94a3b8" }}>About Form SG-1:</strong> The Shade Heat Exposure Record captures risk assessments, exceedance/persistence data, and threshold sources for OSHA compliance readiness.</p>
-        <p style={{ marginTop: 8 }}><strong style={{ color: "#94a3b8" }}>PDF report includes:</strong> Risk distribution summary, detailed assessments table, sourced thresholds, and compliance metadata.</p>
-        <p style={{ marginTop: 8 }}><strong style={{ color: "#94a3b8" }}>CSV report includes:</strong> All assessment data in spreadsheet-compatible format for custom analysis.</p>
+      <div style={{ marginTop: 24, maxWidth: 560, fontSize: 13, color: colors.textMuted, lineHeight: 1.6 }}>
+        <p><strong style={{ color: colors.textSecondary }}>About Form SG-1:</strong> The Shade Heat Exposure Record captures risk assessments, exceedance/persistence data, and threshold sources for OSHA compliance readiness.</p>
+        <p style={{ marginTop: 8 }}><strong style={{ color: colors.textSecondary }}>PDF report includes:</strong> Risk distribution summary, detailed assessments table, sourced thresholds, and compliance metadata.</p>
+        <p style={{ marginTop: 8 }}><strong style={{ color: colors.textSecondary }}>CSV report includes:</strong> All assessment data in spreadsheet-compatible format for custom analysis.</p>
       </div>
     </div>
   );

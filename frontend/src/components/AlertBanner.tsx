@@ -1,4 +1,5 @@
 import { Assessment } from "../lib/api";
+import { useTheme } from "../lib/theme";
 
 const RISK_COLORS: Record<string, string> = {
   CRITICAL: "#ef4444",
@@ -21,16 +22,15 @@ export default function AlertBanner({
   assessments: Assessment[];
   onSelectSite: (id: string) => void;
 }) {
+  const { colors } = useTheme();
   if (!assessments.length) return null;
 
-  // Find highest risk site
   const RISK_ORDER: Record<string, number> = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
   const sorted = [...assessments].sort(
     (a, b) => (RISK_ORDER[b.risk_bucket] || 0) - (RISK_ORDER[a.risk_bucket] || 0)
   );
   const top = sorted[0];
 
-  // Only show for CRITICAL or HIGH
   if (top.risk_bucket !== "CRITICAL" && top.risk_bucket !== "HIGH") return null;
 
   const isCritical = top.risk_bucket === "CRITICAL";
@@ -50,7 +50,6 @@ export default function AlertBanner({
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-        {/* Pulsing dot */}
         <span
           style={{
             width: 10,
@@ -65,11 +64,11 @@ export default function AlertBanner({
         <span style={{ fontSize: 13, fontWeight: 600, color }}>
           {isCritical ? "CRITICAL" : "HIGH"} RISK
         </span>
-        <span style={{ fontSize: 13, color: "#94a3b8" }}>—</span>
-        <span style={{ fontSize: 13, color: "#e2e8f0", fontWeight: 500 }}>
+        <span style={{ fontSize: 13, color: colors.textSecondary }}>—</span>
+        <span style={{ fontSize: 13, color: colors.text, fontWeight: 500 }}>
           {top.name}
         </span>
-        <span style={{ fontSize: 12, color: "#64748b" }}>
+        <span style={{ fontSize: 12, color: colors.textMuted }}>
           {top.temperature_c.toFixed(1)}°C · Heat Index {top.heat_index.toFixed(1)}
         </span>
         {top.exceedance_hours > 0 && (

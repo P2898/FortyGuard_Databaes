@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import * as api from "../lib/api";
+import { useTheme } from "../lib/theme";
 
 function AnimatedNumber({ value, prefix = "$" }: { value: number; prefix?: string }) {
   const [display, setDisplay] = useState(0);
@@ -14,7 +15,7 @@ function AnimatedNumber({ value, prefix = "$" }: { value: number; prefix?: strin
     const animate = () => {
       const elapsed = Date.now() - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
       setDisplay(start + (end - start) * eased);
       if (progress < 1) {
         ref.current = requestAnimationFrame(animate);
@@ -27,56 +28,21 @@ function AnimatedNumber({ value, prefix = "$" }: { value: number; prefix?: strin
   return <span>{prefix}{display.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>;
 }
 
-function Tooltip({ text, children }: { text: string; children: React.ReactNode }) {
-  const [show, setShow] = useState(false);
-  return (
-    <span
-      style={{ position: "relative", display: "inline-block", cursor: "help" }}
-      onMouseEnter={() => setShow(true)}
-      onMouseLeave={() => setShow(false)}
-    >
-      {children}
-      {show && (
-        <span
-          style={{
-            position: "absolute",
-            bottom: "110%",
-            left: "50%",
-            transform: "translateX(-50%)",
-            background: "#1f2937",
-            color: "#e2e8f0",
-            padding: "8px 12px",
-            borderRadius: 6,
-            fontSize: 12,
-            zIndex: 99,
-            boxShadow: "0 4px 12px rgba(0,0,0,.4)",
-            border: "1px solid #334155",
-            maxWidth: 320,
-            whiteSpace: "normal",
-          }}
-        >
-          {text}
-        </span>
-      )}
-    </span>
-  );
-}
-
-function ExpandableCard({ line }: { line: any }) {
+function ExpandableCard({ line, colors }: { line: any; colors: any }) {
   const [expanded, setExpanded] = useState(false);
   const isCompliance = line.label === "Compliance readiness";
 
   return (
     <div
       style={{
-        background: "#111827",
+        background: colors.surface,
         borderRadius: 12,
         padding: 20,
-        border: "1px solid #1e293b",
+        border: `1px solid ${colors.border}`,
         transition: "border-color 0.2s",
       }}
     >
-      <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 4 }}>{line.label}</div>
+      <div style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 4 }}>{line.label}</div>
       <div
         style={{
           fontSize: 28,
@@ -87,12 +53,11 @@ function ExpandableCard({ line }: { line: any }) {
         {isCompliance ? "Active" : line.amount > 0 ? <AnimatedNumber value={line.amount} /> : "$0"}
       </div>
 
-      {/* Why this number? */}
       <button
         onClick={() => setExpanded(!expanded)}
         style={{
           fontSize: 12,
-          color: "#64748b",
+          color: colors.textMuted,
           marginTop: 8,
           cursor: "pointer",
           background: "none",
@@ -112,25 +77,25 @@ function ExpandableCard({ line }: { line: any }) {
           style={{
             marginTop: 10,
             padding: 12,
-            background: "#0f172a",
+            background: colors.bg,
             borderRadius: 8,
-            border: "1px solid #1e293b",
+            border: `1px solid ${colors.border}`,
             fontSize: 12,
             lineHeight: 1.6,
           }}
         >
-          <div style={{ color: "#e2e8f0", fontWeight: 600, marginBottom: 4 }}>Formula</div>
-          <div style={{ color: "#94a3b8" }}>{line.formula}</div>
+          <div style={{ color: colors.text, fontWeight: 600, marginBottom: 4 }}>Formula</div>
+          <div style={{ color: colors.textSecondary }}>{line.formula}</div>
           {line.disclaimer && (
-            <div style={{ marginTop: 8, color: "#64748b", fontStyle: "italic" }}>
+            <div style={{ marginTop: 8, color: colors.textMuted, fontStyle: "italic" }}>
               {line.disclaimer}
             </div>
           )}
           {line.inputs && Object.keys(line.inputs).length > 0 && (
             <div style={{ marginTop: 8 }}>
-              <div style={{ color: "#e2e8f0", fontWeight: 600, marginBottom: 4 }}>Inputs</div>
+              <div style={{ color: colors.text, fontWeight: 600, marginBottom: 4 }}>Inputs</div>
               {Object.entries(line.inputs).map(([k, v]) => (
-                <div key={k} style={{ color: "#94a3b8" }}>
+                <div key={k} style={{ color: colors.textSecondary }}>
                   {k.replace(/_/g, " ")}: {String(v)}
                 </div>
               ))}
@@ -143,6 +108,7 @@ function ExpandableCard({ line }: { line: any }) {
 }
 
 export default function HeatPLScreen() {
+  const { colors } = useTheme();
   const [heatPL, setHeatPL] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -157,14 +123,14 @@ export default function HeatPLScreen() {
   if (loading)
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 300 }}>
-        <div style={{ color: "#94a3b8", fontSize: 14 }}>Computing Heat P&L...</div>
+        <div style={{ color: colors.textSecondary, fontSize: 14 }}>Computing Heat P&L...</div>
       </div>
     );
   if (!heatPL)
     return (
-      <div style={{ textAlign: "center", marginTop: 60, color: "#475569" }}>
+      <div style={{ textAlign: "center", marginTop: 60, color: colors.textDim }}>
         <div style={{ fontSize: 48, marginBottom: 12 }}>$0</div>
-        <div>Run a fleet assessment first to compute Heat P&L.</div>
+        <div style={{ color: colors.textSecondary }}>Run a fleet assessment first to compute Heat P&L.</div>
       </div>
     );
 
@@ -173,26 +139,25 @@ export default function HeatPLScreen() {
 
   return (
     <div>
-      <h2 style={{ fontSize: 22, fontWeight: 700 }}>Heat P&L</h2>
-      <p style={{ color: "#94a3b8", marginTop: 2 }}>
+      <h2 style={{ fontSize: 22, fontWeight: 700, color: colors.text }}>Heat P&L</h2>
+      <p style={{ color: colors.textSecondary, marginTop: 2 }}>
         Financial impact of heat across your portfolio today
       </p>
 
       {/* Headline card */}
       <div
         style={{
-          background: "linear-gradient(135deg, #0f172a, #1e293b)",
+          background: `linear-gradient(135deg, ${colors.surface}, ${colors.surfaceHover})`,
           color: "#fff",
           borderRadius: 16,
           padding: 32,
           marginTop: 20,
           textAlign: "center",
-          border: "1px solid #334155",
+          border: `1px solid ${colors.borderLight}`,
           position: "relative",
           overflow: "hidden",
         }}
       >
-        {/* Decorative gradient orb */}
         <div
           style={{
             position: "absolute",
@@ -207,10 +172,10 @@ export default function HeatPLScreen() {
         <div style={{ fontSize: 14, opacity: 0.7 }}>
           Today, heat cost this portfolio's operations
         </div>
-        <div style={{ fontSize: 56, fontWeight: 800, marginTop: 8, color: "#06b6d4", position: "relative" }}>
+        <div style={{ fontSize: 56, fontWeight: 800, marginTop: 8, color: colors.accent, position: "relative" }}>
           <AnimatedNumber value={heatPL.total_cost} />
         </div>
-        <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 6 }}>
+        <div style={{ fontSize: 13, color: colors.textSecondary, marginTop: 6 }}>
           {heatPL.site_count} sites assessed {"\u00b7"} {heatPL.date}
         </div>
       </div>
@@ -225,7 +190,7 @@ export default function HeatPLScreen() {
         }}
       >
         {financialLines.map((line: any, i: number) => (
-          <ExpandableCard key={i} line={line} />
+          <ExpandableCard key={i} line={line} colors={colors} />
         ))}
       </div>
 
@@ -264,15 +229,15 @@ export default function HeatPLScreen() {
         style={{
           marginTop: 20,
           padding: 16,
-          background: "#111827",
+          background: colors.surface,
           borderRadius: 8,
-          border: "1px solid #1e293b",
+          border: `1px solid ${colors.border}`,
           fontSize: 12,
-          color: "#64748b",
+          color: colors.textMuted,
           lineHeight: 1.6,
         }}
       >
-        <strong style={{ color: "#94a3b8" }}>What's real vs. estimated:</strong>{" "}
+        <strong style={{ color: colors.textSecondary }}>What's real vs. estimated:</strong>{" "}
         Hazard pay and delay claim values are computed from your company-entered rates and real FortyGuard risk data.
         Productivity savings use the SF Fed/Duke research relationship (workers lose ~1hr/day above 85\u00b0F vs 76-80\u00b0F),
         labeled as an estimate. Compliance readiness tracks status only, not estimated fine avoidance.

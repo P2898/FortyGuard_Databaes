@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Site, Assessment, getHeatPL } from "../lib/api";
 import { getRiskColor, getRiskBg, exportCSV } from "./helpers";
+import { useTheme } from "../lib/theme";
 
 const RISK_ORDER: Record<string, number> = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
 
@@ -23,6 +24,7 @@ function Tooltip({ text, children }: { text: string; children: React.ReactNode }
 }
 
 function RiskDistChart({ assessments }: { assessments: Assessment[] }) {
+  const { colors } = useTheme();
   const counts = { LOW: 0, MEDIUM: 0, HIGH: 0, CRITICAL: 0 };
   assessments.forEach((a) => {
     if (a.risk_bucket in counts) counts[a.risk_bucket as keyof typeof counts]++;
@@ -38,11 +40,11 @@ function RiskDistChart({ assessments }: { assessments: Assessment[] }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 4, width: "100%" }}>
       {barData.map(([label, count, color]) => (
         <div key={label} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 11, width: 60, color: "#94a3b8" }}>{label}</span>
-          <div style={{ flex: 1, height: 16, background: "#1e293b", borderRadius: 4, overflow: "hidden" }}>
+          <span style={{ fontSize: 11, width: 60, color: colors.textSecondary }}>{label}</span>
+          <div style={{ flex: 1, height: 16, background: colors.surfaceHover, borderRadius: 4, overflow: "hidden" }}>
             <div style={{ width: `${(count / total) * 100}%`, height: "100%", background: color, borderRadius: 4, transition: "width 0.3s" }} />
           </div>
-          <span style={{ fontSize: 11, color: "#64748b", width: 24, textAlign: "right" }}>{count}</span>
+          <span style={{ fontSize: 11, color: colors.textMuted, width: 24, textAlign: "right" }}>{count}</span>
         </div>
       ))}
     </div>
@@ -50,6 +52,7 @@ function RiskDistChart({ assessments }: { assessments: Assessment[] }) {
 }
 
 export default function FleetDashboard({ sites, assessments, onSelectSite }: { sites: Site[]; assessments: Assessment[]; onSelectSite: (id: string) => void }) {
+  const { colors } = useTheme();
   const [sortBy, setSortBy] = useState<"risk" | "temp">("risk");
   const [searchQuery, setSearchQuery] = useState("");
   const [riskFilter, setRiskFilter] = useState<string>("ALL");
@@ -101,7 +104,7 @@ export default function FleetDashboard({ sites, assessments, onSelectSite }: { s
   }, [assessments]);
 
   const statCards: { label: string; value: string; color: string }[] = [
-    { label: "Total Sites", value: String(sites.length), color: "#06b6d4" },
+    { label: "Total Sites", value: String(sites.length), color: colors.accent },
     { label: "Active Alerts", value: String(alertCount), color: alertCount > 0 ? "#ef4444" : "#22c55e" },
     { label: "Avg Temp", value: avgTemp.toFixed(1) + "°C", color: avgTemp > 32 ? "#f97316" : "#22c55e" },
     { label: "Daily Heat Cost", value: dailyCost !== null ? "$" + dailyCost.toLocaleString() : "—", color: "#f59e0b" },
@@ -115,13 +118,13 @@ export default function FleetDashboard({ sites, assessments, onSelectSite }: { s
           <div
             key={card.label}
             style={{
-              background: "#111827",
+              background: colors.surface,
               borderRadius: 10,
               padding: "14px 18px",
-              border: "1px solid #1e293b",
+              border: `1px solid ${colors.border}`,
             }}
           >
-            <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>{card.label}</div>
+            <div style={{ fontSize: 12, color: colors.textMuted, marginBottom: 4 }}>{card.label}</div>
             <div style={{ fontSize: 24, fontWeight: 700, color: card.color, fontVariantNumeric: "tabular-nums" }}>
               {card.value}
             </div>
@@ -131,8 +134,8 @@ export default function FleetDashboard({ sites, assessments, onSelectSite }: { s
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 8 }}>
         <div>
-          <h2 style={{ fontSize: 22, fontWeight: 700 }}>Fleet Dashboard</h2>
-          <p style={{ color: "#94a3b8", marginTop: 2 }}>Ranked by {sortBy === "risk" ? "risk level" : "temperature"}</p>
+          <h2 style={{ fontSize: 22, fontWeight: 700, color: colors.text }}>Fleet Dashboard</h2>
+          <p style={{ color: colors.textSecondary, marginTop: 2 }}>Ranked by {sortBy === "risk" ? "risk level" : "temperature"}</p>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           {selectedSites.size >= 2 && (
@@ -141,7 +144,7 @@ export default function FleetDashboard({ sites, assessments, onSelectSite }: { s
               style={{
                 fontSize: 12,
                 padding: "6px 14px",
-                background: showComparison ? "#0891b2" : "#06b6d4",
+                background: showComparison ? "#0891b2" : colors.accent,
                 color: "#fff",
                 border: "none",
                 borderRadius: 6,
@@ -154,11 +157,11 @@ export default function FleetDashboard({ sites, assessments, onSelectSite }: { s
           )}
           <button
             onClick={() => exportCSV(siteData.map((s) => ({ site_id: s.site_id, name: s.name, risk: s.assessment?.risk_bucket || "N/A", temp_c: s.assessment?.temperature_c || 0, heat_index: s.assessment?.heat_index || 0, exceedance: s.assessment?.exceedance_hours || 0 })), "fleet_dashboard.csv")}
-            style={{ fontSize: 12, color: "#94a3b8", background: "#1e293b", border: "1px solid #334155", borderRadius: 4, padding: "4px 10px", cursor: "pointer" }}
+            style={{ fontSize: 12, color: colors.textSecondary, background: colors.surfaceHover, border: `1px solid ${colors.borderLight}`, borderRadius: 4, padding: "4px 10px", cursor: "pointer" }}
           >
             CSV {"\u2193"}
           </button>
-          <button onClick={() => setSortBy(sortBy === "risk" ? "temp" : "risk")} style={{ fontSize: 13, padding: "4px 12px", background: "#1e293b", border: "1px solid #334155", borderRadius: 6, cursor: "pointer", color: "#e2e8f0" }}>
+          <button onClick={() => setSortBy(sortBy === "risk" ? "temp" : "risk")} style={{ fontSize: 13, padding: "4px 12px", background: colors.surfaceHover, border: `1px solid ${colors.borderLight}`, borderRadius: 6, cursor: "pointer", color: colors.text }}>
             Sort: {sortBy === "risk" ? "Temp" : "Risk"}
           </button>
         </div>
@@ -175,10 +178,10 @@ export default function FleetDashboard({ sites, assessments, onSelectSite }: { s
             flex: 1,
             minWidth: 200,
             padding: "8px 14px",
-            background: "#111827",
-            border: "1px solid #334155",
+            background: colors.surface,
+            border: `1px solid ${colors.borderLight}`,
             borderRadius: 8,
-            color: "#e2e8f0",
+            color: colors.text,
             fontSize: 13,
             outline: "none",
           }}
@@ -188,10 +191,10 @@ export default function FleetDashboard({ sites, assessments, onSelectSite }: { s
           onChange={(e) => setRiskFilter(e.target.value)}
           style={{
             padding: "8px 14px",
-            background: "#111827",
-            border: "1px solid #334155",
+            background: colors.surface,
+            border: `1px solid ${colors.borderLight}`,
             borderRadius: 8,
-            color: "#e2e8f0",
+            color: colors.text,
             fontSize: 13,
             cursor: "pointer",
             outline: "none",
@@ -205,12 +208,12 @@ export default function FleetDashboard({ sites, assessments, onSelectSite }: { s
         </select>
       </div>
 
-      <div style={{ background: "#111827", borderRadius: 12, border: "1px solid #1e293b", overflow: "hidden" }}>
+      <div style={{ background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}`, overflow: "hidden" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
           <thead>
-            <tr style={{ background: "#0f172a", borderBottom: "1px solid #1e293b" }}>
+            <tr style={{ background: colors.bg, borderBottom: `1px solid ${colors.border}` }}>
               {["", "Site", "Type", "Risk", "Temp C", "Heat Idx", "Exceed", "Persist", ""].map((h) => (
-                <th key={h || "sel"} style={{ textAlign: ["", "Site", "Type", "Risk"].includes(h) ? "left" : "right", padding: "10px 14px", fontWeight: 600, fontSize: 12, textTransform: "uppercase", color: "#64748b" }}>
+                <th key={h || "sel"} style={{ textAlign: ["", "Site", "Type", "Risk"].includes(h) ? "left" : "right", padding: "10px 14px", fontWeight: 600, fontSize: 12, textTransform: "uppercase", color: colors.textMuted }}>
                   {h}
                 </th>
               ))}
@@ -218,18 +221,18 @@ export default function FleetDashboard({ sites, assessments, onSelectSite }: { s
           </thead>
           <tbody>
             {siteData.map((s) => (
-              <tr key={s.site_id} style={{ borderBottom: "1px solid #1e293b", cursor: "pointer", background: selectedSites.has(s.site_id) ? "#0e749010" : undefined }} onClick={() => onSelectSite(s.site_id)}>
+              <tr key={s.site_id} style={{ borderBottom: `1px solid ${colors.border}`, cursor: "pointer", background: selectedSites.has(s.site_id) ? `${colors.accent}10` : undefined }} onClick={() => onSelectSite(s.site_id)}>
                 <td style={{ padding: "10px 8px 10px 14px" }} onClick={(e) => e.stopPropagation()}>
                   <input
                     type="checkbox"
                     checked={selectedSites.has(s.site_id)}
                     onChange={() => toggleSiteSelection(s.site_id)}
                     disabled={!selectedSites.has(s.site_id) && selectedSites.size >= 3}
-                    style={{ cursor: "pointer", accentColor: "#06b6d4" }}
+                    style={{ cursor: "pointer", accentColor: colors.accent }}
                   />
                 </td>
-                <td style={{ padding: "10px 14px", fontWeight: 500 }}>{s.name}</td>
-                <td style={{ padding: "10px 14px", color: "#94a3b8" }}>{s.site_type}</td>
+                <td style={{ padding: "10px 14px", fontWeight: 500, color: colors.text }}>{s.name}</td>
+                <td style={{ padding: "10px 14px", color: colors.textSecondary }}>{s.site_type}</td>
                 <td style={{ padding: "10px 14px" }}>
                   <Tooltip text={s.assessment?.threshold_source || "NIOSH/OSHA thresholds"}>
                     <span style={{ padding: "2px 10px", borderRadius: 12, fontSize: 12, fontWeight: 600, color: "#fff", background: getRiskColor(s.assessment?.risk_bucket || "LOW") }}>
@@ -237,29 +240,29 @@ export default function FleetDashboard({ sites, assessments, onSelectSite }: { s
                     </span>
                   </Tooltip>
                 </td>
-                <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{s.assessment?.temperature_c?.toFixed(1) || "\u2014"}</td>
-                <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{s.assessment?.heat_index?.toFixed(1) || "\u2014"}</td>
-                <td style={{ padding: "10px 14px", textAlign: "right" }}>{s.assessment?.exceedance_hours?.toFixed(1) || "\u2014"}h</td>
-                <td style={{ padding: "10px 14px", textAlign: "right" }}>{s.assessment?.persistence_hours?.toFixed(1) || "\u2014"}h</td>
-                <td style={{ padding: "10px 14px" }}><button style={{ fontSize: 12, color: "#06b6d4", background: "none", border: "none", cursor: "pointer" }}>View {"\u2192"}</button></td>
+                <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: colors.text }}>{s.assessment?.temperature_c?.toFixed(1) || "\u2014"}</td>
+                <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: colors.text }}>{s.assessment?.heat_index?.toFixed(1) || "\u2014"}</td>
+                <td style={{ padding: "10px 14px", textAlign: "right", color: colors.text }}>{s.assessment?.exceedance_hours?.toFixed(1) || "\u2014"}h</td>
+                <td style={{ padding: "10px 14px", textAlign: "right", color: colors.text }}>{s.assessment?.persistence_hours?.toFixed(1) || "\u2014"}h</td>
+                <td style={{ padding: "10px 14px" }}><button style={{ fontSize: 12, color: colors.accent, background: "none", border: "none", cursor: "pointer" }}>View {"\u2192"}</button></td>
               </tr>
             ))}
           </tbody>
         </table>
-        {!siteData.length && <p style={{ padding: 24, textAlign: "center", color: "#475569" }}>No sites. Go to Setup.</p>}
+        {!siteData.length && <p style={{ padding: 24, textAlign: "center", color: colors.textDim }}>No sites. Go to Setup.</p>}
       </div>
 
       {/* Comparison Panel */}
       {showComparison && selectedSiteData.length >= 2 && (
-        <div style={{ marginTop: 20, background: "#111827", borderRadius: 12, padding: 20, border: "1px solid #06b6d440" }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: "#06b6d4" }}>Site Comparison</h3>
+        <div style={{ marginTop: 20, background: colors.surface, borderRadius: 12, padding: 20, border: `1px solid ${colors.accent}40` }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: colors.accent }}>Site Comparison</h3>
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
-                <tr style={{ borderBottom: "1px solid #1e293b" }}>
-                  <th style={{ textAlign: "left", padding: "8px 12px", color: "#64748b", fontSize: 11, textTransform: "uppercase" }}>Metric</th>
+                <tr style={{ borderBottom: `1px solid ${colors.border}` }}>
+                  <th style={{ textAlign: "left", padding: "8px 12px", color: colors.textMuted, fontSize: 11, textTransform: "uppercase" }}>Metric</th>
                   {selectedSiteData.map((s) => (
-                    <th key={s.site_id} style={{ textAlign: "center", padding: "8px 12px", color: "#e2e8f0", fontWeight: 600 }}>{s.name}</th>
+                    <th key={s.site_id} style={{ textAlign: "center", padding: "8px 12px", color: colors.text, fontWeight: 600 }}>{s.name}</th>
                   ))}
                 </tr>
               </thead>
@@ -272,10 +275,10 @@ export default function FleetDashboard({ sites, assessments, onSelectSite }: { s
                   { label: "Persistence", get: (s: any) => (s.assessment?.persistence_hours?.toFixed(1) || "—") + "h" },
                   { label: "Site Type", get: (s: any) => s.site_type },
                 ].map((row) => (
-                  <tr key={row.label} style={{ borderBottom: "1px solid #1e293b" }}>
-                    <td style={{ padding: "8px 12px", color: "#94a3b8" }}>{row.label}</td>
+                  <tr key={row.label} style={{ borderBottom: `1px solid ${colors.border}` }}>
+                    <td style={{ padding: "8px 12px", color: colors.textSecondary }}>{row.label}</td>
                     {selectedSiteData.map((s) => (
-                      <td key={s.site_id} style={{ padding: "8px 12px", textAlign: "center", fontVariantNumeric: "tabular-nums" }}>
+                      <td key={s.site_id} style={{ padding: "8px 12px", textAlign: "center", fontVariantNumeric: "tabular-nums", color: colors.text }}>
                         {row.label === "Risk" ? (
                           <span style={{ padding: "2px 8px", borderRadius: 10, fontSize: 11, fontWeight: 600, color: "#fff", background: getRiskColor(s.assessment?.risk_bucket || "LOW") }}>
                             {row.get(s)}
@@ -291,8 +294,8 @@ export default function FleetDashboard({ sites, assessments, onSelectSite }: { s
         </div>
       )}
 
-      <div style={{ marginTop: 20, background: "#111827", borderRadius: 12, padding: 20, border: "1px solid #1e293b" }}>
-        <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Risk Distribution</h3>
+      <div style={{ marginTop: 20, background: colors.surface, borderRadius: 12, padding: 20, border: `1px solid ${colors.border}` }}>
+        <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: colors.text }}>Risk Distribution</h3>
         <RiskDistChart assessments={assessments} />
       </div>
     </div>

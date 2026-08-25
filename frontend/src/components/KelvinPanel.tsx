@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import * as api from "../lib/api";
+import { useTheme } from "../lib/theme";
 
 function KelvinAvatar({ level, speaking }: { level: string; speaking: boolean }) {
   const bgColor =
@@ -59,6 +60,7 @@ function KelvinAvatar({ level, speaking }: { level: string; speaking: boolean })
 }
 
 export default function KelvinPanel({ onNavigateRoute }: { onNavigateRoute?: (originId: string, destId: string) => void } = {}) {
+  const { colors } = useTheme();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<{ role: string; text: string; action?: any }[]>([
     {
@@ -77,32 +79,23 @@ export default function KelvinPanel({ onNavigateRoute }: { onNavigateRoute?: (or
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Check browser Speech API support
   const speechSupported = typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
 
   const speak = (text: string) => {
     const synth = window.speechSynthesis;
     if (!synth) return;
-
-    // Cancel any ongoing speech
     synth.cancel();
-
     const u = new SpeechSynthesisUtterance(text.replace(/<[^>]+>/g, ""));
-
-    // Voice selection
     if (voiceOption !== "default") {
       const voices = synth.getVoices();
       if (voiceOption === "A") {
-        // Prefer female voice
         const v = voices.find((v) => /female|zira|samantha|karen|moira/i.test(v.name));
         if (v) u.voice = v;
       } else {
-        // Prefer male voice
         const v = voices.find((v) => /male|david|daniel| james/i.test(v.name));
         if (v) u.voice = v;
       }
     }
-
     u.rate = 1.0;
     u.pitch = 1.0;
     u.onstart = () => setSpeaking(true);
@@ -113,26 +106,20 @@ export default function KelvinPanel({ onNavigateRoute }: { onNavigateRoute?: (or
 
   const startListening = () => {
     if (!speechSupported) return;
-
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     recognition.continuous = false;
     recognition.interimResults = false;
     recognition.lang = "en-US";
-
     recognition.onstart = () => setListening(true);
     recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript;
       setInput(transcript);
       setListening(false);
-      // Auto-send after short delay
-      setTimeout(() => {
-        sendWithText(transcript);
-      }, 300);
+      setTimeout(() => { sendWithText(transcript); }, 300);
     };
     recognition.onerror = () => setListening(false);
     recognition.onend = () => setListening(false);
-
     recognitionRef.current = recognition;
     recognition.start();
   };
@@ -151,12 +138,7 @@ export default function KelvinPanel({ onNavigateRoute }: { onNavigateRoute?: (or
     try {
       const res = await api.askKelvin(q);
       setMessages((m) => [...m, { role: "kelvin", text: res.response, action: res.data?.action || null }]);
-
-      // Update avatar risk level from response data
-      if (res.data?.risk_bucket) {
-        setHighestRisk(res.data.risk_bucket);
-      }
-
+      if (res.data?.risk_bucket) setHighestRisk(res.data.risk_bucket);
       speak(res.response);
     } catch {
       setMessages((m) => [
@@ -181,8 +163,8 @@ export default function KelvinPanel({ onNavigateRoute }: { onNavigateRoute?: (or
 
   return (
     <div>
-      <h2 style={{ fontSize: 22, fontWeight: 700 }}>Kelvin {"\u2014"} Safety Assistant</h2>
-      <p style={{ color: "#94a3b8", marginTop: 2 }}>
+      <h2 style={{ fontSize: 22, fontWeight: 700, color: colors.text }}>Kelvin {"\u2014"} Safety Assistant</h2>
+      <p style={{ color: colors.textSecondary, marginTop: 2 }}>
         Deterministic answers from backend data. No LLM makes up numbers.
       </p>
 
@@ -193,9 +175,9 @@ export default function KelvinPanel({ onNavigateRoute }: { onNavigateRoute?: (or
           {/* Chat messages */}
           <div
             style={{
-              background: "#111827",
+              background: colors.surface,
               borderRadius: 12,
-              border: "1px solid #1e293b",
+              border: `1px solid ${colors.border}`,
               padding: 16,
               maxHeight: 400,
               overflowY: "auto",
@@ -213,7 +195,7 @@ export default function KelvinPanel({ onNavigateRoute }: { onNavigateRoute?: (or
                 }}
               >
                 {m.role === "kelvin" && (
-                  <div style={{ fontSize: 10, color: "#64748b", marginBottom: 2, marginLeft: 4 }}>
+                  <div style={{ fontSize: 10, color: colors.textMuted, marginBottom: 2, marginLeft: 4 }}>
                     Kelvin
                   </div>
                 )}
@@ -221,8 +203,8 @@ export default function KelvinPanel({ onNavigateRoute }: { onNavigateRoute?: (or
                   style={{
                     padding: "10px 16px",
                     borderRadius: m.role === "kelvin" ? "4px 12px 12px 12px" : "12px 4px 12px 12px",
-                    background: m.role === "kelvin" ? "#1e293b" : "#06b6d4",
-                    color: m.role === "kelvin" ? "#e2e8f0" : "#fff",
+                    background: m.role === "kelvin" ? colors.surfaceHover : colors.accent,
+                    color: m.role === "kelvin" ? colors.text : "#fff",
                     maxWidth: "85%",
                     fontSize: 14,
                     lineHeight: 1.5,
@@ -236,7 +218,7 @@ export default function KelvinPanel({ onNavigateRoute }: { onNavigateRoute?: (or
                         onClick={() => onNavigateRoute(m.action.origin_id, m.action.dest_id)}
                         style={{
                           padding: "8px 16px",
-                          background: "linear-gradient(135deg, #06b6d4, #0891b2)",
+                          background: `linear-gradient(135deg, ${colors.accent}, #0891b2)`,
                           color: "#fff",
                           borderRadius: 8,
                           border: "none",
@@ -271,21 +253,21 @@ export default function KelvinPanel({ onNavigateRoute }: { onNavigateRoute?: (or
                 }}
                 style={{
                   padding: "5px 12px",
-                  background: "#1e293b",
-                  color: "#94a3b8",
+                  background: colors.surfaceHover,
+                  color: colors.textSecondary,
                   borderRadius: 16,
-                  border: "1px solid #334155",
+                  border: `1px solid ${colors.borderLight}`,
                   cursor: "pointer",
                   fontSize: 12,
                   transition: "all 0.15s",
                 }}
                 onMouseOver={(e) => {
-                  e.currentTarget.style.borderColor = "#06b6d4";
-                  e.currentTarget.style.color = "#e2e8f0";
+                  e.currentTarget.style.borderColor = colors.accent;
+                  e.currentTarget.style.color = colors.text;
                 }}
                 onMouseOut={(e) => {
-                  e.currentTarget.style.borderColor = "#334155";
-                  e.currentTarget.style.color = "#94a3b8";
+                  e.currentTarget.style.borderColor = colors.borderLight;
+                  e.currentTarget.style.color = colors.textSecondary;
                 }}
               >
                 {q}
@@ -300,10 +282,10 @@ export default function KelvinPanel({ onNavigateRoute }: { onNavigateRoute?: (or
                 onClick={listening ? stopListening : startListening}
                 style={{
                   padding: "10px 14px",
-                  background: listening ? "#ef4444" : "#1e293b",
-                  color: listening ? "#fff" : "#94a3b8",
+                  background: listening ? "#ef4444" : colors.surfaceHover,
+                  color: listening ? "#fff" : colors.textSecondary,
                   borderRadius: 8,
-                  border: "1px solid #334155",
+                  border: `1px solid ${colors.borderLight}`,
                   cursor: "pointer",
                   fontSize: 16,
                   transition: "all 0.15s",
@@ -322,11 +304,11 @@ export default function KelvinPanel({ onNavigateRoute }: { onNavigateRoute?: (or
               style={{
                 flex: 1,
                 padding: "10px 14px",
-                border: "1px solid #334155",
+                border: `1px solid ${colors.borderLight}`,
                 borderRadius: 8,
                 fontSize: 14,
-                background: "#0f172a",
-                color: "#e2e8f0",
+                background: colors.bg,
+                color: colors.text,
               }}
             />
             <button
@@ -334,7 +316,7 @@ export default function KelvinPanel({ onNavigateRoute }: { onNavigateRoute?: (or
               disabled={!input.trim()}
               style={{
                 padding: "10px 20px",
-                background: input.trim() ? "#06b6d4" : "#334155",
+                background: input.trim() ? colors.accent : colors.borderLight,
                 color: "#fff",
                 borderRadius: 8,
                 border: "none",
