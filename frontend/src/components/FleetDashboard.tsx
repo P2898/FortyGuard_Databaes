@@ -136,7 +136,7 @@ export default function FleetDashboard({ sites, assessments, onSelectSite, onNav
       value: avgTemp.toFixed(1) + "°C",
       color: avgTemp > 32 ? "#f97316" : "#22c55e",
       hint: "Sort by temperature",
-      onClick: () => { setSortBy("temp"); setTimeout(scrollToTable, 50); },
+      onClick: () => { setRiskFilter("ALL"); setSortBy("temp"); setTimeout(scrollToTable, 50); },
     },
     {
       label: "Daily Heat Cost",
