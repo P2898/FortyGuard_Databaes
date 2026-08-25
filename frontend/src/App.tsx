@@ -502,10 +502,6 @@ export default function App() {
 
       {/* Responsive CSS */}
       <style>{`
-        @media (max-width: 768px) {
-          .sidebar-desktop { display: none !important; }
-          .mobile-nav { display: flex !important; }
-        }
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
@@ -513,6 +509,25 @@ export default function App() {
         @keyframes pulse {
           0%, 100% { opacity: 1; transform: scale(1); }
           50% { opacity: 0.5; transform: scale(1.3); }
+        }
+        /* Table row hover — works in both dark and light mode */
+        .site-table tbody tr {
+          transition: background 0.1s;
+        }
+        .site-table tbody tr:hover {
+          background: ${colors.surfaceHover} !important;
+        }
+        .site-table tbody tr.selected-row {
+          background: ${colors.accent}12 !important;
+        }
+        .site-table tbody tr.selected-row:hover {
+          background: ${colors.accent}20 !important;
+        }
+        /* Comparison hint */
+        .compare-hint {
+          font-size: 11px;
+          color: ${colors.textMuted};
+          margin-top: 4px;
         }
         /* Mobile responsive */
         @media (max-width: 768px) {
@@ -522,7 +537,7 @@ export default function App() {
           .stats-grid { grid-template-columns: 1fr 1fr !important; }
         }
         @media (max-width: 480px) {
-          .stats-grid { grid-template-columns: 1fr !important; }
+          .stats-grid { gridTemplateColumns: "1fr" !important; }
         }
       `}</style>
     </div>

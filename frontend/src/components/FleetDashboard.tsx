@@ -262,10 +262,17 @@ export default function FleetDashboard({ sites, assessments, onSelectSite, onNav
         </select>
       </div>
 
+      {/* Comparison hint */}
+      {selectedSites.size === 0 && (
+        <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 8, marginTop: -8 }}>
+          ☐ Check 2-3 sites to compare them side-by-side
+        </div>
+      )}
+
       {/* Table — horizontal scroll on mobile */}
       <div style={{ background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}`, overflow: "hidden" }}>
         <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 640 }}>
+          <table className="site-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 640 }}>
             <thead>
               <tr style={{ background: colors.bg, borderBottom: `1px solid ${colors.border}` }}>
                 {["", "Site", "Type", "Risk", "Temp C", "Heat Idx", "Exceed", "Persist", ""].map((h) => (
@@ -277,7 +284,7 @@ export default function FleetDashboard({ sites, assessments, onSelectSite, onNav
             </thead>
             <tbody>
               {siteData.map((s) => (
-                <tr key={s.site_id} style={{ borderBottom: `1px solid ${colors.border}`, cursor: "pointer", background: selectedSites.has(s.site_id) ? `${colors.accent}10` : undefined }} onClick={() => onSelectSite(s.site_id)}>
+                <tr key={s.site_id} className={selectedSites.has(s.site_id) ? "selected-row" : ""} style={{ borderBottom: `1px solid ${colors.border}`, cursor: "pointer" }} onClick={() => onSelectSite(s.site_id)}>
                   <td style={{ padding: "10px 8px 10px 14px" }} onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
