@@ -19,6 +19,7 @@ import ReportsScreen from "./components/ReportsScreen";
 import KelvinPanel from "./components/KelvinPanel";
 import SettingsScreen from "./components/SettingsScreen";
 import UploadScreen from "./components/UploadScreen";
+import AlertBanner from "./components/AlertBanner";
 
 type View =
   | "dashboard"
@@ -328,6 +329,9 @@ export default function App() {
           </div>
         </div>
 
+        {/* Live Alert Banner */}
+        <AlertBanner assessments={assessments} onSelectSite={selectSite} />
+
         {/* Content area */}
         <div style={{ flex: 1, padding: 24, overflowY: "auto" }}>
           {view === "setup" && <UploadScreen onDone={loadSites} />}
@@ -443,6 +447,10 @@ export default function App() {
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.5; transform: scale(1.3); }
         }
       `}</style>
     </div>
