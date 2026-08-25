@@ -321,7 +321,7 @@ export default function FleetDashboard({ sites, assessments, onSelectSite, onNav
         <div style={{ marginTop: 20, background: colors.surface, borderRadius: 12, padding: 20, border: `1px solid ${colors.accent}40` }}>
           <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: colors.accent }}>Site Comparison</h3>
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 400 }}>
+            <table className="comparison-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 400 }}>
               <thead>
                 <tr style={{ borderBottom: `1px solid ${colors.border}` }}>
                   <th style={{ textAlign: "left", padding: "8px 12px", color: colors.textMuted, fontSize: 11, textTransform: "uppercase" }}>Metric</th>
@@ -339,7 +339,7 @@ export default function FleetDashboard({ sites, assessments, onSelectSite, onNav
                   { label: "Persistence", get: (s: any) => (s.assessment?.persistence_hours?.toFixed(1) || "—") + "h" },
                   { label: "Site Type", get: (s: any) => s.site_type },
                 ].map((row) => (
-                  <tr key={row.label} style={{ borderBottom: `1px solid ${colors.border}` }}>
+                  <tr key={row.label} className="comp-row" style={{ borderBottom: `1px solid ${colors.border}` }}>
                     <td style={{ padding: "8px 12px", color: colors.textSecondary }}>{row.label}</td>
                     {selectedSiteData.map((s) => (
                       <td key={s.site_id} style={{ padding: "8px 12px", textAlign: "center", fontVariantNumeric: "tabular-nums", color: colors.text }}>

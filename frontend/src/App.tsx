@@ -523,6 +523,12 @@ export default function App() {
         .site-table tbody tr.selected-row:hover {
           background: ${colors.accent}20 !important;
         }
+        .comparison-table tbody tr.comp-row {
+          transition: background 0.1s;
+        }
+        .comparison-table tbody tr.comp-row:hover {
+          background: ${colors.surfaceHover} !important;
+        }
         /* Comparison hint */
         .compare-hint {
           font-size: 11px;
