@@ -51,11 +51,23 @@ function RiskDistChart({ assessments }: { assessments: Assessment[] }) {
 
 export default function FleetDashboard({ sites, assessments, onSelectSite }: { sites: Site[]; assessments: Assessment[]; onSelectSite: (id: string) => void }) {
   const [sortBy, setSortBy] = useState<"risk" | "temp">("risk");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [riskFilter, setRiskFilter] = useState<string>("ALL");
 
   const siteData = sites
     .map((s) => {
       const latest = [...assessments].reverse().find((a) => a.site_id === s.site_id);
       return { ...s, assessment: latest };
+    })
+    .filter((s) => {
+      const matchesSearch =
+        !searchQuery ||
+        s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.site_type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.site_id.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesRisk =
+        riskFilter === "ALL" || s.assessment?.risk_bucket === riskFilter;
+      return matchesSearch && matchesRisk;
     })
     .sort((a, b) =>
       sortBy === "risk"
@@ -120,6 +132,47 @@ export default function FleetDashboard({ sites, assessments, onSelectSite }: { s
             Sort: {sortBy === "risk" ? "Temp" : "Risk"}
           </button>
         </div>
+      </div>
+
+      {/* Search & Filter Row */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+        <input
+          type="text"
+          placeholder="Search sites..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          style={{
+            flex: 1,
+            minWidth: 200,
+            padding: "8px 14px",
+            background: "#111827",
+            border: "1px solid #334155",
+            borderRadius: 8,
+            color: "#e2e8f0",
+            fontSize: 13,
+            outline: "none",
+          }}
+        />
+        <select
+          value={riskFilter}
+          onChange={(e) => setRiskFilter(e.target.value)}
+          style={{
+            padding: "8px 14px",
+            background: "#111827",
+            border: "1px solid #334155",
+            borderRadius: 8,
+            color: "#e2e8f0",
+            fontSize: 13,
+            cursor: "pointer",
+            outline: "none",
+          }}
+        >
+          <option value="ALL">All Risk Levels</option>
+          <option value="CRITICAL">🔴 CRITICAL</option>
+          <option value="HIGH">🟠 HIGH</option>
+          <option value="MEDIUM">🟡 MEDIUM</option>
+          <option value="LOW">🟢 LOW</option>
+        </select>
       </div>
 
       <div style={{ background: "#111827", borderRadius: 12, border: "1px solid #1e293b", overflow: "hidden" }}>
