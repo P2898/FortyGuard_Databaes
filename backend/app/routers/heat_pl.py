@@ -76,7 +76,7 @@ async def get_heat_pl(date: str = "", site_count: int = 8):
         high_hours = sum(a.get("exceedance_hours", 0) for a in assessments if a.get("risk_bucket") in ("HIGH",))
         critical_hours = sum(a.get("exceedance_hours", 0) for a in assessments if a.get("risk_bucket") in ("CRITICAL",))
         # Hours avoided = persistence hours from sites where recommendations were followed
-        hours_avoided = sum(a.get("persistence_hours", 0) * 0.5 for a in assessments if a.get("risk_bucket") in ("MEDIUM", "HIGH"))
+        hours_avoided = sum(a.get("persistence_hours", 0) * 0.5 for a in assessments if a.get("risk_bucket") in ("MEDIUM", "HIGH", "CRITICAL"))
         # Exceedance days = count of sites with any exceedance
         exceedance_days = sum(1 for a in assessments if a.get("exceedance_hours", 0) > 0)
         site_count = len(assessments)
