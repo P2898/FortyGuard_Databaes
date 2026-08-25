@@ -23,7 +23,7 @@ export default function RoutePlanner({ initialOriginId, initialDestId, onRoutePl
   const [sites, setSites] = useState<RouteSite[]>([]);
   const [originId, setOriginId] = useState("");
   const [destId, setDestId] = useState("");
-  const [travelMode, setTravelMode] = useState<"drive" | "walk">("drive");
+  const [travelMode, setTravelMode] = useState<"drive" | "walk" | "ride">("drive");
   const [useGPS, setUseGPS] = useState(false);
   const [gpsCoords, setGpsCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [gpsLoading, setGpsLoading] = useState(false);
@@ -249,9 +249,9 @@ export default function RoutePlanner({ initialOriginId, initialDestId, onRoutePl
         <div>
           <label style={{ fontSize: 12, color: colors.textSecondary, display: "block", marginBottom: 4 }}>Mode</label>
           <div style={{ display: "flex", border: `1px solid ${colors.borderLight}`, borderRadius: 8, overflow: "hidden" }}>
-            {(["drive", "walk"] as const).map((mode) => (
+            {(["drive", "walk", "ride"] as const).map((mode) => (
               <button key={mode} onClick={() => setTravelMode(mode)} style={{ padding: "10px 14px", background: travelMode === mode ? colors.accent : colors.bg, color: travelMode === mode ? "#fff" : colors.textSecondary, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
-                {mode === "drive" ? "🚗 Drive" : "🚶 Walk"}
+                {mode === "drive" ? "🚗 Drive" : mode === "walk" ? "🚶 Walk" : "🚴 Ride"}
               </button>
             ))}
           </div>

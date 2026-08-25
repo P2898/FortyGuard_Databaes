@@ -76,9 +76,9 @@ async function fetchHeatData(
   aqi: number;
 } | null> {
   try {
-    const base = window.location.origin.includes("localhost")
+    const base = import.meta.env.DEV
       ? "http://localhost:8000"
-      : "";
+      : "https://shade-api-gbyb.onrender.com";
     const resp = await fetch(
       `${base}/api/streetview/heat-data?lat=${lat.toFixed(6)}&lon=${lng.toFixed(6)}`
     );

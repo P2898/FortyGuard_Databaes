@@ -131,12 +131,34 @@ def _get_full_route(origin_lat, origin_lon, dest_lat, dest_lon, network_type="dr
     return None, all_coords, total_dist_km, None, None
 
 
+def _is_in_bay_area(lat, lon):
+    """Check if coordinates are in the Bay Area land bounds.
+
+    Simple polygon check: Bay Area is roughly between
+    lon -122.6 to -121.4, lat 37.3 to 38.4
+    Excludes the ocean (west of ~-122.5 at most latitudes).
+    """
+    # Quick bounding box check
+    if not (37.3 <= lat <= 38.4 and -122.6 <= lon <= -121.4):
+        return False
+    # Exclude ocean: west coast of SF peninsula is around -122.5
+    # But we need to allow the coast itself, so use a simple diagonal cutoff
+    # At lat 37.7 (SF), ocean starts around -122.5
+    # At lat 37.5 (Pacifica), ocean starts around -122.5
+    # At lat 37.8 (Marin), ocean starts around -122.6
+    ocean_lon_threshold = -122.4 - (lat - 37.7) * 0.5
+    if lon < ocean_lon_threshold:
+        return False
+    return True
+
+
 def _get_heat_coolest_route(fastest_coords, heatmap_tiles):
     """Compute the coolest route by deviating from the fastest route at hot points.
 
     Instead of independent heat-weighted routing (which causes zig-zag),
     we follow the fastest route but push waypoints away from hot areas.
     Uses Gaussian smoothing on the offset to avoid sharp zig-zags.
+    Ensures deviations stay on land (Bay Area bounds).
     """
     if len(fastest_coords) < 2:
         return fastest_coords
@@ -162,11 +184,20 @@ def _get_heat_coolest_route(fastest_coords, heatmap_tiles):
 
             # Detour amount scales with temperature, capped
             detour = min(0.03, max(0, (temp - 28) * 0.003))
-            # Push perpendicular to route, bias slightly west (toward coast)
-            raw_offsets.append((
-                perp_x * detour * 0.7 - detour * 0.3,  # westward bias
-                perp_y * detour * 0.7,
-            ))
+
+            # Try both perpendicular directions, pick the one that stays on land
+            best_offset = (0.0, 0.0)
+            for sign in [1, -1]:
+                candidate_lon = lon + perp_x * detour * sign * 0.7 - detour * 0.3
+                candidate_lat = lat + perp_y * detour * sign * 0.7
+                if _is_in_bay_area(candidate_lat, candidate_lon):
+                    best_offset = (
+                        perp_x * detour * sign * 0.7 - detour * 0.3,
+                        perp_y * detour * sign * 0.7,
+                    )
+                    break
+
+            raw_offsets.append(best_offset)
         else:
             raw_offsets.append((0.0, 0.0))
 
@@ -186,11 +217,15 @@ def _get_heat_coolest_route(fastest_coords, heatmap_tiles):
             sy /= weight_sum
         smoothed.append((sx, sy))
 
-    # Step 3: Apply smoothed offsets
+    # Step 3: Apply smoothed offsets (clamped to land)
     coolest = []
     for i, (lon, lat) in enumerate(fastest_coords):
         ox, oy = smoothed[i]
-        coolest.append((lon + ox, lat + oy))
+        new_lon, new_lat = lon + ox, lat + oy
+        # Clamp to land bounds
+        if not _is_in_bay_area(new_lat, new_lon):
+            new_lon, new_lat = lon, lat  # stay on original route
+        coolest.append((new_lon, new_lat))
 
     return coolest
 
@@ -205,7 +240,9 @@ async def plan_route(req: RouteRequest):
     """
     from app.services.fortyguard import submit_heatmap
 
-    travel_mode = req.travel_mode if req.travel_mode in ("walk", "drive") else "drive"
+    # Map travel modes to OSMnx network types
+    MODE_MAP = {"drive": "drive", "walk": "walk", "ride": "bike"}
+    travel_mode = MODE_MAP.get(req.travel_mode, "drive")
 
     # Get heatmap data
     padding = max(0.02, _haversine_km(req.origin_lat, req.origin_lon, req.dest_lat, req.dest_lon) / 111 * 0.3)
@@ -254,7 +291,8 @@ async def plan_route(req: RouteRequest):
     temp_delta_f = temp_delta_c * 9 / 5
 
     # Time delta
-    avg_speed_kmh = 5 if travel_mode == "walk" else 40
+    SPEED_MAP = {"walk": 5, "bike": 16, "drive": 40}
+    avg_speed_kmh = SPEED_MAP.get(travel_mode, 40)
     # Coolest route is slightly longer due to detours
     coolest_dist_km = fastest_dist_km * 1.08  # ~8% longer
     time_delta_min = max(0, int((coolest_dist_km - fastest_dist_km) / avg_speed_kmh * 60))
