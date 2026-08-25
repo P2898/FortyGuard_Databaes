@@ -59,6 +59,9 @@ export default function App() {
   const [refreshing, setRefreshing] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [routeNav, setRouteNav] = useState<{ originId: string; destId: string } | null>(null);
+  const [autoRefresh, setAutoRefresh] = useState<number>(() => {
+    return parseInt(localStorage.getItem("shade_auto_refresh") || "0", 10);
+  });
 
   const loadSites = useCallback(async () => {
     try {
@@ -100,6 +103,20 @@ export default function App() {
       .then(setPolicy)
       .catch(() => {});
   }, []);
+
+  // Auto-refresh interval
+  useEffect(() => {
+    if (autoRefresh <= 0) return;
+    const timer = setInterval(() => {
+      refreshAssessments();
+    }, autoRefresh);
+    return () => clearInterval(timer);
+  }, [autoRefresh, refreshAssessments]);
+
+  const handleAutoRefreshChange = (ms: number) => {
+    setAutoRefresh(ms);
+    localStorage.setItem("shade_auto_refresh", String(ms));
+  };
 
   const selectSite = (id: string) => {
     setSelectedSite(id);
@@ -320,28 +337,50 @@ export default function App() {
                 })}
               </div>
             )}
-            <button
-              onClick={refreshAssessments}
-              disabled={refreshing}
-              style={{
-                fontSize: 13,
-                padding: "6px 14px",
-                background: refreshing ? colors.borderLight : colors.surfaceHover,
-                border: `1px solid ${colors.borderLight}`,
-                borderRadius: 8,
-                cursor: "pointer",
-                color: colors.text,
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                transition: "all 0.15s",
-              }}
-            >
-              <span style={{ animation: refreshing ? "spin 1s linear infinite" : "none", display: "inline-block" }}>
-                {"\u21BB"}
-              </span>
-              {refreshing ? "Assessing..." : "Refresh"}
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {/* Auto-refresh selector */}
+              <select
+                value={autoRefresh}
+                onChange={(e) => handleAutoRefreshChange(Number(e.target.value))}
+                style={{
+                  fontSize: 12,
+                  padding: "5px 8px",
+                  background: autoRefresh > 0 ? "#064e3b" : colors.surfaceHover,
+                  border: `1px solid ${autoRefresh > 0 ? "#059669" : colors.borderLight}`,
+                  borderRadius: 6,
+                  color: autoRefresh > 0 ? "#6ee7b7" : colors.textSecondary,
+                  cursor: "pointer",
+                  outline: "none",
+                }}
+              >
+                <option value={0}>Auto: Off</option>
+                <option value={30000}>Auto: 30s</option>
+                <option value={60000}>Auto: 1m</option>
+                <option value={300000}>Auto: 5m</option>
+              </select>
+              <button
+                onClick={refreshAssessments}
+                disabled={refreshing}
+                style={{
+                  fontSize: 13,
+                  padding: "6px 14px",
+                  background: refreshing ? colors.borderLight : colors.surfaceHover,
+                  border: `1px solid ${colors.borderLight}`,
+                  borderRadius: 8,
+                  cursor: "pointer",
+                  color: colors.text,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  transition: "all 0.15s",
+                }}
+              >
+                <span style={{ animation: refreshing ? "spin 1s linear infinite" : "none", display: "inline-block" }}>
+                  {"\u21BB"}
+                </span>
+                {refreshing ? "Assessing..." : "Refresh"}
+              </button>
+            </div>
           </div>
         </div>
 
