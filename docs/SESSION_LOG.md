@@ -7,7 +7,7 @@
 **Repo:** https://github.com/P2898/FortyGuard_Databaes  
 **Live Frontend:** https://frontend-ten-pied-ucmtf13d1v.vercel.app  
 **Live Backend:** https://shade-api-gbyb.onrender.com  
-**Database:** Supabase (https://ursmvbxlkhvicakjrwtf.supabase.co)
+**Database:** Supabase (see .env for URL)
 
 ---
 

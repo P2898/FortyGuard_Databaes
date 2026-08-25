@@ -123,3 +123,4 @@ venv/
 
 # Supabase
 supabase/.temp/
+backend/cache/

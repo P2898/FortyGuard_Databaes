@@ -5,7 +5,7 @@
 - **Node.js** (for frontend)
 - **Python 3.11+** (for backend)
 - **Git** (GitHub repo: P2898/FortyGuard_Databaes)
-- **Supabase** project (https://ursmvbxlkhvicakjrwtf.supabase.co)
+- **Supabase** project (see .env for URL)
 - **FortyGuard** API key
 
 ---
@@ -14,11 +14,11 @@
 
 Create `backend/.env` (git-ignored):
 ```
-FORTYGUARD_API_KEY=fdcb70c8942da512a92f40b23ff8d4e2
+FORTYGUARD_API_KEY=your_fortyguard_api_key_here
 FORTYGUARD_BASE_URL=https://api.fortyguard.com
-SUPABASE_URL=https://ursmvbxlkhvicakjrwtf.supabase.co
-SUPABASE_KEY=eyJhbGci...anon_key
-SUPABASE_SERVICE_KEY=eyJhbGci...service_role_key
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_KEY=your_supabase_service_role_key
 FORTYGUARD_LIVE=false
 ```
 
@@ -60,9 +60,9 @@ curl http://localhost:8000/api/health
 
 ### 2. Get Credentials
 Go to Settings → API:
-- Project URL: `https://xxxx.supabase.co`
-- anon/public key: `eyJ...`
-- service_role key: `eyJ...` (different from anon)
+- Project URL: `https://your-project.supabase.co`
+- anon/public key: `your_anon_key`
+- service_role key: `your_service_role_key`
 
 ### 3. Run Schema
 Open SQL Editor → New Query → paste and run:

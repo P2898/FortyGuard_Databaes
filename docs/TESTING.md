@@ -78,7 +78,7 @@
 |---|---|---|
 | Frontend (Vercel) | https://frontend-ten-pied-ucmtf13d1v.vercel.app | ✅ Live |
 | Backend (Render) | https://shade-api-gbyb.onrender.com | ✅ Live |
-| Database (Supabase) | https://ursmvbxlkhvicakjrwtf.supabase.co | ✅ Connected |
+| Database (Supabase) | (see .env for URL) | ✅ Connected |
 
 ---
 
