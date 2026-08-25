@@ -20,6 +20,7 @@ import KelvinPanel from "./components/KelvinPanel";
 import SettingsScreen from "./components/SettingsScreen";
 import UploadScreen from "./components/UploadScreen";
 import AlertBanner from "./components/AlertBanner";
+import { useTheme } from "./lib/theme";
 
 type View =
   | "dashboard"
@@ -118,14 +119,16 @@ export default function App() {
       })[0].risk_bucket
     : "LOW";
 
+  const { theme, toggleTheme, colors } = useTheme();
+
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "#0a0f1a" }}>
+    <div style={{ display: "flex", minHeight: "100vh", background: colors.bg, transition: "background 0.3s" }}>
       {/* Sidebar */}
       <nav
         style={{
           width: sidebarCollapsed ? 64 : 220,
-          background: "#111827",
-          borderRight: "1px solid #1e293b",
+          background: colors.surface,
+          borderRight: `1px solid ${colors.border}`,
           display: "flex",
           flexDirection: "column",
           flexShrink: 0,
@@ -137,7 +140,7 @@ export default function App() {
         <div
           style={{
             padding: sidebarCollapsed ? "16px 8px" : "20px 16px",
-            borderBottom: "1px solid #1e293b",
+            borderBottom: `1px solid ${colors.border}`,
             display: "flex",
             alignItems: "center",
             gap: 10,
@@ -156,10 +159,10 @@ export default function App() {
           />
           {!sidebarCollapsed && (
             <div>
-              <h1 style={{ fontSize: 18, fontWeight: 800, letterSpacing: -0.5, color: "#e2e8f0", margin: 0 }}>
+              <h1 style={{ fontSize: 18, fontWeight: 800, letterSpacing: -0.5, color: colors.text, margin: 0 }}>
                 Shade
               </h1>
-              <p style={{ fontSize: 11, color: "#64748b", marginTop: 0 }}>
+              <p style={{ fontSize: 11, color: colors.textMuted, marginTop: 0 }}>
                 FortyGuard-powered safety
               </p>
             </div>
@@ -185,8 +188,8 @@ export default function App() {
                 cursor: "pointer",
                 fontSize: 14,
                 fontWeight: view === v ? 600 : 400,
-                background: view === v ? "#1e293b" : "transparent",
-                color: view === v ? "#06b6d4" : "#94a3b8",
+                background: view === v ? colors.surfaceHover : "transparent",
+                color: view === v ? colors.accent : colors.textSecondary,
                 textAlign: sidebarCollapsed ? "center" : "left",
                 justifyContent: sidebarCollapsed ? "center" : "flex-start",
                 transition: "all 0.15s",
@@ -201,16 +204,15 @@ export default function App() {
         {/* Bottom section */}
         <div style={{ padding: "8px 6px", borderTop: "1px solid #1e293b" }}>
           <button
-            onClick={() => setView("setup")}
-            style={{
-              width: "100%",
-              padding: sidebarCollapsed ? "8px" : "8px 12px",
-              background: "#1e293b",
-              border: "1px solid #334155",
+            onClick={() => setView("setup")}              style={{
+                width: "100%",
+                padding: sidebarCollapsed ? "8px" : "8px 12px",
+                background: colors.surfaceHover,
+                border: `1px solid ${colors.borderLight}`,
               borderRadius: 8,
               cursor: "pointer",
               fontSize: 13,
-              color: "#94a3b8",
+              color: colors.textSecondary,
               display: "flex",
               alignItems: "center",
               gap: 8,
@@ -231,13 +233,13 @@ export default function App() {
             justifyContent: "space-between",
             alignItems: "center",
             padding: "10px 24px",
-            borderBottom: "1px solid #1e293b",
-            background: "#111827",
+            borderBottom: `1px solid ${colors.border}`,
+            background: colors.surface,
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <img src="/shade-logo.jpeg" alt="Shade" style={{ width: 24, height: 24, borderRadius: 4 }} />
-            <span style={{ fontSize: 15, fontWeight: 700, color: "#e2e8f0" }}>Shade</span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: colors.text }}>Shade</span>
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
               className="sidebar-desktop"
@@ -245,7 +247,7 @@ export default function App() {
                 fontSize: 16,
                 background: "none",
                 border: "none",
-                color: "#64748b",
+                color: colors.textMuted,
                 cursor: "pointer",
                 padding: "4px 8px",
               }}
@@ -253,12 +255,26 @@ export default function App() {
             >
               {"\u2630"}
             </button>
+            <button
+              onClick={toggleTheme}
+              style={{
+                fontSize: 16,
+                background: "none",
+                border: "none",
+                color: colors.textMuted,
+                cursor: "pointer",
+                padding: "4px 8px",
+              }}
+              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {theme === "dark" ? "\u2600" : "\u263E"}
+            </button>
             {refreshTime && (
               <span
                 style={{
                   fontSize: 12,
-                  color: "#64748b",
-                  background: "#1e293b",
+                  color: colors.textMuted,
+                  background: colors.surfaceHover,
                   padding: "4px 10px",
                   borderRadius: 12,
                   display: "flex",
@@ -285,7 +301,7 @@ export default function App() {
                 {(["CRITICAL", "HIGH", "MEDIUM", "LOW"] as const).map((bucket) => {
                   const count = assessments.filter((a) => a.risk_bucket === bucket).length;
                   if (!count) return null;
-                  const colors: Record<string, string> = { CRITICAL: "#dc2626", HIGH: "#ea580c", MEDIUM: "#d97706", LOW: "#16a34a" };
+                  const riskColors: Record<string, string> = { CRITICAL: "#dc2626", HIGH: "#ea580c", MEDIUM: "#d97706", LOW: "#16a34a" };
                   return (
                     <span
                       key={bucket}
@@ -293,8 +309,8 @@ export default function App() {
                         fontSize: 11,
                         padding: "2px 8px",
                         borderRadius: 10,
-                        background: `${colors[bucket]}20`,
-                        color: colors[bucket],
+                        background: `${riskColors[bucket]}20`,
+                        color: riskColors[bucket],
                         fontWeight: 600,
                       }}
                     >
@@ -310,11 +326,11 @@ export default function App() {
               style={{
                 fontSize: 13,
                 padding: "6px 14px",
-                background: refreshing ? "#334155" : "#1e293b",
-                border: "1px solid #334155",
+                background: refreshing ? colors.borderLight : colors.surfaceHover,
+                border: `1px solid ${colors.borderLight}`,
                 borderRadius: 8,
                 cursor: "pointer",
-                color: "#e2e8f0",
+                color: colors.text,
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
@@ -378,8 +394,8 @@ export default function App() {
             display: "flex",
             justifyContent: "space-between",
             padding: "8px 24px",
-            borderTop: "1px solid #1e293b",
-            background: "#111827",
+            borderTop: `1px solid ${colors.border}`,
+            background: colors.surface,
             fontSize: 11,
             color: "#475569",
           }}
