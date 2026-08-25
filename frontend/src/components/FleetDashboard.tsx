@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Site, Assessment } from "../lib/api";
+import { useState, useEffect } from "react";
+import { Site, Assessment, getHeatPL } from "../lib/api";
 import { getRiskColor, getRiskBg, exportCSV } from "./helpers";
 
 const RISK_ORDER: Record<string, number> = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
@@ -63,8 +63,47 @@ export default function FleetDashboard({ sites, assessments, onSelectSite }: { s
         : (b.assessment?.temperature_c || 0) - (a.assessment?.temperature_c || 0)
     );
 
+  // Quick stats
+  const alertCount = assessments.filter((a) => a.risk_bucket === "CRITICAL" || a.risk_bucket === "HIGH").length;
+  const avgTemp = assessments.length
+    ? assessments.reduce((sum, a) => sum + a.temperature_c, 0) / assessments.length
+    : 0;
+  const [dailyCost, setDailyCost] = useState<number | null>(null);
+  useEffect(() => {
+    getHeatPL()
+      .then((pl) => setDailyCost(pl.total_cost))
+      .catch(() => {});
+  }, [assessments]);
+
+  const statCards: { label: string; value: string; color: string }[] = [
+    { label: "Total Sites", value: String(sites.length), color: "#06b6d4" },
+    { label: "Active Alerts", value: String(alertCount), color: alertCount > 0 ? "#ef4444" : "#22c55e" },
+    { label: "Avg Temp", value: avgTemp.toFixed(1) + "°C", color: avgTemp > 32 ? "#f97316" : "#22c55e" },
+    { label: "Daily Heat Cost", value: dailyCost !== null ? "$" + dailyCost.toLocaleString() : "—", color: "#f59e0b" },
+  ];
+
   return (
     <div>
+      {/* Quick Stats Row */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 20 }}>
+        {statCards.map((card) => (
+          <div
+            key={card.label}
+            style={{
+              background: "#111827",
+              borderRadius: 10,
+              padding: "14px 18px",
+              border: "1px solid #1e293b",
+            }}
+          >
+            <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>{card.label}</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: card.color, fontVariantNumeric: "tabular-nums" }}>
+              {card.value}
+            </div>
+          </div>
+        ))}
+      </div>
+
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 8 }}>
         <div>
           <h2 style={{ fontSize: 22, fontWeight: 700 }}>Fleet Dashboard</h2>
