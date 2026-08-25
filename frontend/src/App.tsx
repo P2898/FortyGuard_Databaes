@@ -87,22 +87,19 @@ export default function App() {
     setRefreshing(false);
   }, [sites]);
 
+  // Load all data in parallel on mount
   useEffect(() => {
-    loadSites();
+    Promise.all([
+      loadSites(),
+      getHeatPL().then(setHeatPL).catch(() => {}),
+      getPolicy().then(setPolicy).catch(() => {}),
+    ]);
   }, [loadSites]);
 
+  // Auto-assess once sites are loaded
   useEffect(() => {
     if (sites.length) refreshAssessments();
   }, [sites, refreshAssessments]);
-
-  useEffect(() => {
-    getHeatPL()
-      .then(setHeatPL)
-      .catch(() => {});
-    getPolicy()
-      .then(setPolicy)
-      .catch(() => {});
-  }, []);
 
   // Auto-refresh interval
   useEffect(() => {

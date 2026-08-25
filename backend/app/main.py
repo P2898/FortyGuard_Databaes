@@ -1,5 +1,6 @@
 """Shade — FastAPI backend entry point."""
 
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,8 +8,8 @@ from app.routers import sites, assessment, heat_pl, kelvin, route, reports, stre
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: seed demo sites
-    await sites.seed_sites_on_startup()
+    # Startup: seed demo sites in background (non-blocking)
+    asyncio.create_task(sites.seed_sites_on_startup())
     yield
 
 app = FastAPI(

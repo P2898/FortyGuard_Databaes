@@ -6,6 +6,7 @@ from datetime import datetime
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from pydantic import BaseModel
 from app.database import get_service_client, is_configured
+from app.cache import cache_get, cache_set, cache_clear
 
 router = APIRouter(prefix="/api/sites", tags=["sites"])
 
@@ -72,17 +73,24 @@ async def seed_sites_on_startup():
 
 @router.get("", response_model=list[SiteResponse])
 async def list_sites():
+    cached = cache_get("sites")
+    if cached is not None:
+        return cached
     if is_configured():
         sb = get_service_client()
         result = sb.table("sites").select("*").execute()
-        return result.data or []
-    return _sites
+        sites = result.data or []
+    else:
+        sites = _sites
+    cache_set("sites", sites)
+    return sites
 
 
 @router.post("", response_model=SiteResponse)
 async def create_site(site: SiteCreate):
     _validate_site(site.site_id, site.latitude, site.longitude, site.site_type)
     entry = {**site.dict(), "created_at": datetime.utcnow().isoformat()}
+    cache_clear("sites")
 
     if is_configured():
         sb = get_service_client()
@@ -101,6 +109,7 @@ async def create_site(site: SiteCreate):
 
 @router.post("/upload", response_model=list[SiteResponse])
 async def upload_csv(file: UploadFile = File(...)):
+    cache_clear("sites")
     """Upload a CSV file with columns: site_id, name, latitude, longitude, site_type"""
     if not file.filename.endswith(".csv"):
         raise HTTPException(status_code=400, detail="File must be a CSV")
@@ -176,6 +185,7 @@ async def upload_csv(file: UploadFile = File(...)):
 
 @router.delete("/{site_id}")
 async def delete_site(site_id: str):
+    cache_clear("sites")
     if is_configured():
         sb = get_service_client()
         existing = sb.table("sites").select("site_id").eq("site_id", site_id).execute()

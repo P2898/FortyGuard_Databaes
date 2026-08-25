@@ -9,6 +9,7 @@ from typing import Optional
 from app.services.fortyguard import submit_heatmap, submit_env_params
 from app.services.risk_scoring import classify_risk, compute_exceedance_hours, compute_persistence_hours, THRESHOLDS
 from app.database import get_service_client, is_configured
+from app.cache import cache_get, cache_set
 
 router = APIRouter(prefix="/api/assessment", tags=["assessment"])
 
@@ -115,6 +116,12 @@ async def assess_fleet(req: AssessRequest):
     Uses deterministic location-based temperature estimation for speed.
     No API calls needed — fast enough for real-time dashboard updates.
     """
+    # Return cached result if fresh (unless specific sites requested)
+    if not req.site_ids:
+        cached = cache_get("fleet_assessment")
+        if cached:
+            return AssessmentResponse(**cached)
+
     start = time.time()
 
     target_sites = _get_sites()
@@ -184,7 +191,7 @@ async def assess_fleet(req: AssessRequest):
     _latest_assessment_cache["data"] = [a.dict() for a in assessments]
     _latest_assessment_cache["timestamp"] = datetime.utcnow().isoformat()
 
-    return AssessmentResponse(
+    response = AssessmentResponse(
         sites=assessments,
         stats={
             "min": min(a.temperature_c for a in assessments),
@@ -195,6 +202,12 @@ async def assess_fleet(req: AssessRequest):
         response_time_ms=elapsed_ms,
         cached=False,
     )
+
+    # Cache fleet assessment for 30s (only full fleet, not specific sites)
+    if not req.site_ids:
+        cache_set("fleet_assessment", response.dict())
+
+    return response
 
 
 def get_latest_assessments() -> list[dict]:
