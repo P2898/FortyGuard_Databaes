@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Site, Assessment, getHeatPL } from "../lib/api";
 import { getRiskColor, getRiskBg, exportCSV } from "./helpers";
 import { useTheme } from "../lib/theme";
@@ -110,27 +110,33 @@ export default function FleetDashboard({ sites, assessments, onSelectSite, onNav
       .catch(() => {});
   }, [assessments]);
 
+  const tableRef = useRef<HTMLDivElement>(null);
+
+  const scrollToTable = useCallback(() => {
+    tableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
   const statCards: { label: string; value: string; color: string; onClick?: () => void; hint: string }[] = [
     {
       label: "Total Sites",
       value: String(sites.length),
       color: colors.accent,
-      hint: "View all sites",
-      onClick: () => onNavigate?.("dashboard"),
+      hint: "Scroll to sites",
+      onClick: () => { setRiskFilter("ALL"); setSortBy("risk"); setTimeout(scrollToTable, 50); },
     },
     {
       label: "Active Alerts",
       value: String(alertCount),
       color: alertCount > 0 ? "#ef4444" : "#22c55e",
       hint: alertCount > 0 ? "Filter to HIGH/CRITICAL" : "No alerts",
-      onClick: alertCount > 0 ? () => onNavigate?.("dashboard", { riskFilter: "CRITICAL" }) : undefined,
+      onClick: alertCount > 0 ? () => { setRiskFilter("CRITICAL"); setTimeout(scrollToTable, 50); } : undefined,
     },
     {
       label: "Avg Temp",
       value: avgTemp.toFixed(1) + "°C",
       color: avgTemp > 32 ? "#f97316" : "#22c55e",
       hint: "Sort by temperature",
-      onClick: () => onNavigate?.("dashboard", { sortBy: "temp" }),
+      onClick: () => { setSortBy("temp"); setTimeout(scrollToTable, 50); },
     },
     {
       label: "Daily Heat Cost",
@@ -270,7 +276,7 @@ export default function FleetDashboard({ sites, assessments, onSelectSite, onNav
       )}
 
       {/* Table — horizontal scroll on mobile */}
-      <div style={{ background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}`, overflow: "hidden" }}>
+      <div ref={tableRef} style={{ background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}`, overflow: "hidden", scrollMarginTop: 80 }}>
         <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
           <table className="site-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 640 }}>
             <thead>
