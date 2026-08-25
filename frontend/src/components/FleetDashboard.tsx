@@ -53,6 +53,8 @@ export default function FleetDashboard({ sites, assessments, onSelectSite }: { s
   const [sortBy, setSortBy] = useState<"risk" | "temp">("risk");
   const [searchQuery, setSearchQuery] = useState("");
   const [riskFilter, setRiskFilter] = useState<string>("ALL");
+  const [selectedSites, setSelectedSites] = useState<Set<string>>(new Set());
+  const [showComparison, setShowComparison] = useState(false);
 
   const siteData = sites
     .map((s) => {
@@ -74,6 +76,17 @@ export default function FleetDashboard({ sites, assessments, onSelectSite }: { s
         ? (RISK_ORDER[b.assessment?.risk_bucket || "LOW"] || 0) - (RISK_ORDER[a.assessment?.risk_bucket || "LOW"] || 0)
         : (b.assessment?.temperature_c || 0) - (a.assessment?.temperature_c || 0)
     );
+
+  const toggleSiteSelection = (siteId: string) => {
+    setSelectedSites((prev) => {
+      const next = new Set(prev);
+      if (next.has(siteId)) next.delete(siteId);
+      else if (next.size < 3) next.add(siteId);
+      return next;
+    });
+  };
+
+  const selectedSiteData = siteData.filter((s) => selectedSites.has(s.site_id));
 
   // Quick stats
   const alertCount = assessments.filter((a) => a.risk_bucket === "CRITICAL" || a.risk_bucket === "HIGH").length;
@@ -121,7 +134,24 @@ export default function FleetDashboard({ sites, assessments, onSelectSite }: { s
           <h2 style={{ fontSize: 22, fontWeight: 700 }}>Fleet Dashboard</h2>
           <p style={{ color: "#94a3b8", marginTop: 2 }}>Ranked by {sortBy === "risk" ? "risk level" : "temperature"}</p>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {selectedSites.size >= 2 && (
+            <button
+              onClick={() => setShowComparison(!showComparison)}
+              style={{
+                fontSize: 12,
+                padding: "6px 14px",
+                background: showComparison ? "#0891b2" : "#06b6d4",
+                color: "#fff",
+                border: "none",
+                borderRadius: 6,
+                cursor: "pointer",
+                fontWeight: 600,
+              }}
+            >
+              {showComparison ? "Close Compare" : `Compare (${selectedSites.size})`}
+            </button>
+          )}
           <button
             onClick={() => exportCSV(siteData.map((s) => ({ site_id: s.site_id, name: s.name, risk: s.assessment?.risk_bucket || "N/A", temp_c: s.assessment?.temperature_c || 0, heat_index: s.assessment?.heat_index || 0, exceedance: s.assessment?.exceedance_hours || 0 })), "fleet_dashboard.csv")}
             style={{ fontSize: 12, color: "#94a3b8", background: "#1e293b", border: "1px solid #334155", borderRadius: 4, padding: "4px 10px", cursor: "pointer" }}
@@ -179,8 +209,8 @@ export default function FleetDashboard({ sites, assessments, onSelectSite }: { s
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
           <thead>
             <tr style={{ background: "#0f172a", borderBottom: "1px solid #1e293b" }}>
-              {["Site", "Type", "Risk", "Temp C", "Heat Idx", "Exceed", "Persist", ""].map((h) => (
-                <th key={h} style={{ textAlign: ["Site", "Type", "Risk"].includes(h) ? "left" : "right", padding: "10px 14px", fontWeight: 600, fontSize: 12, textTransform: "uppercase", color: "#64748b" }}>
+              {["", "Site", "Type", "Risk", "Temp C", "Heat Idx", "Exceed", "Persist", ""].map((h) => (
+                <th key={h || "sel"} style={{ textAlign: ["", "Site", "Type", "Risk"].includes(h) ? "left" : "right", padding: "10px 14px", fontWeight: 600, fontSize: 12, textTransform: "uppercase", color: "#64748b" }}>
                   {h}
                 </th>
               ))}
@@ -188,7 +218,16 @@ export default function FleetDashboard({ sites, assessments, onSelectSite }: { s
           </thead>
           <tbody>
             {siteData.map((s) => (
-              <tr key={s.site_id} style={{ borderBottom: "1px solid #1e293b", cursor: "pointer" }} onClick={() => onSelectSite(s.site_id)}>
+              <tr key={s.site_id} style={{ borderBottom: "1px solid #1e293b", cursor: "pointer", background: selectedSites.has(s.site_id) ? "#0e749010" : undefined }} onClick={() => onSelectSite(s.site_id)}>
+                <td style={{ padding: "10px 8px 10px 14px" }} onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    checked={selectedSites.has(s.site_id)}
+                    onChange={() => toggleSiteSelection(s.site_id)}
+                    disabled={!selectedSites.has(s.site_id) && selectedSites.size >= 3}
+                    style={{ cursor: "pointer", accentColor: "#06b6d4" }}
+                  />
+                </td>
                 <td style={{ padding: "10px 14px", fontWeight: 500 }}>{s.name}</td>
                 <td style={{ padding: "10px 14px", color: "#94a3b8" }}>{s.site_type}</td>
                 <td style={{ padding: "10px 14px" }}>
@@ -209,6 +248,48 @@ export default function FleetDashboard({ sites, assessments, onSelectSite }: { s
         </table>
         {!siteData.length && <p style={{ padding: 24, textAlign: "center", color: "#475569" }}>No sites. Go to Setup.</p>}
       </div>
+
+      {/* Comparison Panel */}
+      {showComparison && selectedSiteData.length >= 2 && (
+        <div style={{ marginTop: 20, background: "#111827", borderRadius: 12, padding: 20, border: "1px solid #06b6d440" }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: "#06b6d4" }}>Site Comparison</h3>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid #1e293b" }}>
+                  <th style={{ textAlign: "left", padding: "8px 12px", color: "#64748b", fontSize: 11, textTransform: "uppercase" }}>Metric</th>
+                  {selectedSiteData.map((s) => (
+                    <th key={s.site_id} style={{ textAlign: "center", padding: "8px 12px", color: "#e2e8f0", fontWeight: 600 }}>{s.name}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  { label: "Risk", get: (s: any) => s.assessment?.risk_bucket || "N/A" },
+                  { label: "Temperature", get: (s: any) => s.assessment?.temperature_c?.toFixed(1) + "°C" || "—" },
+                  { label: "Heat Index", get: (s: any) => s.assessment?.heat_index?.toFixed(1) || "—" },
+                  { label: "Exceedance", get: (s: any) => (s.assessment?.exceedance_hours?.toFixed(1) || "—") + "h" },
+                  { label: "Persistence", get: (s: any) => (s.assessment?.persistence_hours?.toFixed(1) || "—") + "h" },
+                  { label: "Site Type", get: (s: any) => s.site_type },
+                ].map((row) => (
+                  <tr key={row.label} style={{ borderBottom: "1px solid #1e293b" }}>
+                    <td style={{ padding: "8px 12px", color: "#94a3b8" }}>{row.label}</td>
+                    {selectedSiteData.map((s) => (
+                      <td key={s.site_id} style={{ padding: "8px 12px", textAlign: "center", fontVariantNumeric: "tabular-nums" }}>
+                        {row.label === "Risk" ? (
+                          <span style={{ padding: "2px 8px", borderRadius: 10, fontSize: 11, fontWeight: 600, color: "#fff", background: getRiskColor(s.assessment?.risk_bucket || "LOW") }}>
+                            {row.get(s)}
+                          </span>
+                        ) : row.get(s)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div style={{ marginTop: 20, background: "#111827", borderRadius: 12, padding: 20, border: "1px solid #1e293b" }}>
         <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Risk Distribution</h3>
