@@ -217,6 +217,7 @@ export default function RoutePlanner({ initialOriginId, initialDestId, onRoutePl
         Compare fastest vs. heat-coolest route — powered by FortyGuard grid
       </p>
 
+      {/* Main form row — all controls on the same line */}
       <div style={{ display: "flex", gap: 12, marginTop: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
         <div style={{ flex: 1, minWidth: 180 }}>
           <label style={{ fontSize: 12, color: colors.textSecondary, display: "block", marginBottom: 4 }}>Origin</label>
@@ -226,7 +227,7 @@ export default function RoutePlanner({ initialOriginId, initialDestId, onRoutePl
                 {gpsCoords ? `${gpsCoords.lat.toFixed(4)}, ${gpsCoords.lon.toFixed(4)}` : "Waiting for GPS..."}
               </div>
               <button onClick={requestGPS} disabled={gpsLoading} style={{ padding: "10px 12px", background: colors.surfaceHover, border: `1px solid ${colors.borderLight}`, borderRadius: 8, color: colors.text, cursor: "pointer", fontSize: 14 }}>
-                {gpsLoading ? "..." : "\uD83D\uDCF7"}
+                {gpsLoading ? "..." : "📷"}
               </button>
             </div>
           ) : (
@@ -235,10 +236,6 @@ export default function RoutePlanner({ initialOriginId, initialDestId, onRoutePl
               {sites.map((s) => (<option key={s.site_id} value={s.site_id}>{s.name}</option>))}
             </select>
           )}
-          <label style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, fontSize: 12, color: colors.textSecondary, cursor: "pointer" }}>
-            <input type="checkbox" checked={useGPS} onChange={(e) => { setUseGPS(e.target.checked); if (e.target.checked) requestGPS(); }} style={{ accentColor: colors.accent }} />
-            Use my GPS location
-          </label>
         </div>
 
         <div style={{ flex: 1, minWidth: 180 }}>
@@ -254,16 +251,22 @@ export default function RoutePlanner({ initialOriginId, initialDestId, onRoutePl
           <div style={{ display: "flex", border: `1px solid ${colors.borderLight}`, borderRadius: 8, overflow: "hidden" }}>
             {(["drive", "walk"] as const).map((mode) => (
               <button key={mode} onClick={() => setTravelMode(mode)} style={{ padding: "10px 14px", background: travelMode === mode ? colors.accent : colors.bg, color: travelMode === mode ? "#fff" : colors.textSecondary, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
-                {mode === "drive" ? "\uD83D\uDE97 Drive" : "\uD83D\uDEB6 Walk"}
+                {mode === "drive" ? "🚗 Drive" : "🚶 Walk"}
               </button>
             ))}
           </div>
         </div>
 
-        <button onClick={planRouteHandler} disabled={loading || !destId} style={{ padding: "10px 24px", background: loading || !destId ? colors.borderLight : colors.accent, color: "#fff", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 600, fontSize: 14 }}>
+        <button onClick={planRouteHandler} disabled={loading || !destId} style={{ padding: "10px 24px", background: loading || !destId ? colors.borderLight : colors.accent, color: "#fff", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 600, fontSize: 14, height: 40 }}>
           {loading ? "Planning..." : "Plan Route"}
         </button>
       </div>
+
+      {/* GPS checkbox — below the form row */}
+      <label style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 8, fontSize: 12, color: colors.textSecondary, cursor: "pointer" }}>
+        <input type="checkbox" checked={useGPS} onChange={(e) => { setUseGPS(e.target.checked); if (e.target.checked) requestGPS(); }} style={{ accentColor: colors.accent }} />
+        Use my GPS location
+      </label>
 
       {error && (
         <div style={{ marginTop: 12, padding: "8px 14px", background: "#7f1d1d", color: "#fca5a5", borderRadius: 8, fontSize: 13 }}>{error}</div>
