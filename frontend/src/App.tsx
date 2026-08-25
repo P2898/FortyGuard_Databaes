@@ -128,6 +128,10 @@ export default function App() {
     setView("route");
   };
 
+  const handleDashboardNavigate = (target: string, options?: any) => {
+    setView(target as View);
+  };
+
   // Get highest risk across all assessments for Kelvin avatar
   const highestRisk = assessments.length
     ? [...assessments].sort((a, b) => {
@@ -249,9 +253,11 @@ export default function App() {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            padding: "10px 24px",
+            padding: "10px 16px",
             borderBottom: `1px solid ${colors.border}`,
             background: colors.surface,
+            flexWrap: "wrap",
+            gap: 8,
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -388,13 +394,14 @@ export default function App() {
         <AlertBanner assessments={assessments} onSelectSite={selectSite} />
 
         {/* Content area */}
-        <div style={{ flex: 1, padding: 24, overflowY: "auto" }}>
+        <div className="main-content" style={{ flex: 1, padding: 24, overflowY: "auto" }}>
           {view === "setup" && <UploadScreen onDone={loadSites} />}
           {view === "dashboard" && (
             <FleetDashboard
               sites={sites}
               assessments={assessments}
               onSelectSite={selectSite}
+              onNavigate={handleDashboardNavigate}
             />
           )}
           {view === "map" && (
@@ -506,6 +513,16 @@ export default function App() {
         @keyframes pulse {
           0%, 100% { opacity: 1; transform: scale(1); }
           50% { opacity: 0.5; transform: scale(1.3); }
+        }
+        /* Mobile responsive */
+        @media (max-width: 768px) {
+          .sidebar-desktop { display: none !important; }
+          .mobile-nav { display: flex !important; }
+          .main-content { padding: 16px !important; }
+          .stats-grid { grid-template-columns: 1fr 1fr !important; }
+        }
+        @media (max-width: 480px) {
+          .stats-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
     </div>

@@ -25,7 +25,7 @@ export default function SettingsScreen({ policy, onSave }: { policy: Policy; onS
   return (
     <div>
       <h2 style={{ fontSize: 22, fontWeight: 700, color: colors.text }}>Settings</h2>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginTop: 20, maxWidth: 800 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 20, marginTop: 20, maxWidth: 800 }}>
         {/* Company Policy */}
         <div style={{ background: colors.surface, borderRadius: 12, padding: 24, border: `1px solid ${colors.border}` }}>
           <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: colors.text }}>Company Policy</h3>

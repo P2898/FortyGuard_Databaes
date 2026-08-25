@@ -51,7 +51,14 @@ function RiskDistChart({ assessments }: { assessments: Assessment[] }) {
   );
 }
 
-export default function FleetDashboard({ sites, assessments, onSelectSite }: { sites: Site[]; assessments: Assessment[]; onSelectSite: (id: string) => void }) {
+interface FleetDashboardProps {
+  sites: Site[];
+  assessments: Assessment[];
+  onSelectSite: (id: string) => void;
+  onNavigate?: (view: string, options?: any) => void;
+}
+
+export default function FleetDashboard({ sites, assessments, onSelectSite, onNavigate }: FleetDashboardProps) {
   const { colors } = useTheme();
   const [sortBy, setSortBy] = useState<"risk" | "temp">("risk");
   const [searchQuery, setSearchQuery] = useState("");
@@ -103,31 +110,78 @@ export default function FleetDashboard({ sites, assessments, onSelectSite }: { s
       .catch(() => {});
   }, [assessments]);
 
-  const statCards: { label: string; value: string; color: string }[] = [
-    { label: "Total Sites", value: String(sites.length), color: colors.accent },
-    { label: "Active Alerts", value: String(alertCount), color: alertCount > 0 ? "#ef4444" : "#22c55e" },
-    { label: "Avg Temp", value: avgTemp.toFixed(1) + "°C", color: avgTemp > 32 ? "#f97316" : "#22c55e" },
-    { label: "Daily Heat Cost", value: dailyCost !== null ? "$" + dailyCost.toLocaleString() : "—", color: "#f59e0b" },
+  const statCards: { label: string; value: string; color: string; onClick?: () => void; hint: string }[] = [
+    {
+      label: "Total Sites",
+      value: String(sites.length),
+      color: colors.accent,
+      hint: "View all sites",
+      onClick: () => onNavigate?.("dashboard"),
+    },
+    {
+      label: "Active Alerts",
+      value: String(alertCount),
+      color: alertCount > 0 ? "#ef4444" : "#22c55e",
+      hint: alertCount > 0 ? "Filter to HIGH/CRITICAL" : "No alerts",
+      onClick: alertCount > 0 ? () => onNavigate?.("dashboard", { riskFilter: "CRITICAL" }) : undefined,
+    },
+    {
+      label: "Avg Temp",
+      value: avgTemp.toFixed(1) + "°C",
+      color: avgTemp > 32 ? "#f97316" : "#22c55e",
+      hint: "Sort by temperature",
+      onClick: () => onNavigate?.("dashboard", { sortBy: "temp" }),
+    },
+    {
+      label: "Daily Heat Cost",
+      value: dailyCost !== null ? "$" + dailyCost.toLocaleString() : "—",
+      color: "#f59e0b",
+      hint: "View Heat P&L",
+      onClick: () => onNavigate?.("heatpl"),
+    },
   ];
 
   return (
     <div>
       {/* Quick Stats Row */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 20 }}>
+      <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 20 }}>
         {statCards.map((card) => (
           <div
             key={card.label}
+            onClick={card.onClick}
             style={{
               background: colors.surface,
               borderRadius: 10,
               padding: "14px 18px",
               border: `1px solid ${colors.border}`,
+              cursor: card.onClick ? "pointer" : "default",
+              transition: "all 0.15s",
+              position: "relative",
+            }}
+            onMouseEnter={(e) => {
+              if (card.onClick) {
+                e.currentTarget.style.borderColor = colors.accent;
+                e.currentTarget.style.transform = "translateY(-1px)";
+                e.currentTarget.style.boxShadow = `0 4px 12px ${colors.accent}15`;
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (card.onClick) {
+                e.currentTarget.style.borderColor = colors.border;
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "none";
+              }
             }}
           >
             <div style={{ fontSize: 12, color: colors.textMuted, marginBottom: 4 }}>{card.label}</div>
             <div style={{ fontSize: 24, fontWeight: 700, color: card.color, fontVariantNumeric: "tabular-nums" }}>
               {card.value}
             </div>
+            {card.onClick && (
+              <div style={{ fontSize: 10, color: colors.accent, marginTop: 6, opacity: 0.8 }}>
+                {card.hint} →
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -137,7 +191,7 @@ export default function FleetDashboard({ sites, assessments, onSelectSite }: { s
           <h2 style={{ fontSize: 22, fontWeight: 700, color: colors.text }}>Fleet Dashboard</h2>
           <p style={{ color: colors.textSecondary, marginTop: 2 }}>Ranked by {sortBy === "risk" ? "risk level" : "temperature"}</p>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           {selectedSites.size >= 2 && (
             <button
               onClick={() => setShowComparison(!showComparison)}
@@ -208,47 +262,50 @@ export default function FleetDashboard({ sites, assessments, onSelectSite }: { s
         </select>
       </div>
 
+      {/* Table — horizontal scroll on mobile */}
       <div style={{ background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}`, overflow: "hidden" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
-          <thead>
-            <tr style={{ background: colors.bg, borderBottom: `1px solid ${colors.border}` }}>
-              {["", "Site", "Type", "Risk", "Temp C", "Heat Idx", "Exceed", "Persist", ""].map((h) => (
-                <th key={h || "sel"} style={{ textAlign: ["", "Site", "Type", "Risk"].includes(h) ? "left" : "right", padding: "10px 14px", fontWeight: 600, fontSize: 12, textTransform: "uppercase", color: colors.textMuted }}>
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {siteData.map((s) => (
-              <tr key={s.site_id} style={{ borderBottom: `1px solid ${colors.border}`, cursor: "pointer", background: selectedSites.has(s.site_id) ? `${colors.accent}10` : undefined }} onClick={() => onSelectSite(s.site_id)}>
-                <td style={{ padding: "10px 8px 10px 14px" }} onClick={(e) => e.stopPropagation()}>
-                  <input
-                    type="checkbox"
-                    checked={selectedSites.has(s.site_id)}
-                    onChange={() => toggleSiteSelection(s.site_id)}
-                    disabled={!selectedSites.has(s.site_id) && selectedSites.size >= 3}
-                    style={{ cursor: "pointer", accentColor: colors.accent }}
-                  />
-                </td>
-                <td style={{ padding: "10px 14px", fontWeight: 500, color: colors.text }}>{s.name}</td>
-                <td style={{ padding: "10px 14px", color: colors.textSecondary }}>{s.site_type}</td>
-                <td style={{ padding: "10px 14px" }}>
-                  <Tooltip text={s.assessment?.threshold_source || "NIOSH/OSHA thresholds"}>
-                    <span style={{ padding: "2px 10px", borderRadius: 12, fontSize: 12, fontWeight: 600, color: "#fff", background: getRiskColor(s.assessment?.risk_bucket || "LOW") }}>
-                      {s.assessment?.risk_bucket || "N/A"}
-                    </span>
-                  </Tooltip>
-                </td>
-                <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: colors.text }}>{s.assessment?.temperature_c?.toFixed(1) || "\u2014"}</td>
-                <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: colors.text }}>{s.assessment?.heat_index?.toFixed(1) || "\u2014"}</td>
-                <td style={{ padding: "10px 14px", textAlign: "right", color: colors.text }}>{s.assessment?.exceedance_hours?.toFixed(1) || "\u2014"}h</td>
-                <td style={{ padding: "10px 14px", textAlign: "right", color: colors.text }}>{s.assessment?.persistence_hours?.toFixed(1) || "\u2014"}h</td>
-                <td style={{ padding: "10px 14px" }}><button style={{ fontSize: 12, color: colors.accent, background: "none", border: "none", cursor: "pointer" }}>View {"\u2192"}</button></td>
+        <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 640 }}>
+            <thead>
+              <tr style={{ background: colors.bg, borderBottom: `1px solid ${colors.border}` }}>
+                {["", "Site", "Type", "Risk", "Temp C", "Heat Idx", "Exceed", "Persist", ""].map((h) => (
+                  <th key={h || "sel"} style={{ textAlign: ["", "Site", "Type", "Risk"].includes(h) ? "left" : "right", padding: "10px 14px", fontWeight: 600, fontSize: 12, textTransform: "uppercase", color: colors.textMuted, whiteSpace: "nowrap" }}>
+                    {h}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {siteData.map((s) => (
+                <tr key={s.site_id} style={{ borderBottom: `1px solid ${colors.border}`, cursor: "pointer", background: selectedSites.has(s.site_id) ? `${colors.accent}10` : undefined }} onClick={() => onSelectSite(s.site_id)}>
+                  <td style={{ padding: "10px 8px 10px 14px" }} onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selectedSites.has(s.site_id)}
+                      onChange={() => toggleSiteSelection(s.site_id)}
+                      disabled={!selectedSites.has(s.site_id) && selectedSites.size >= 3}
+                      style={{ cursor: "pointer", accentColor: colors.accent }}
+                    />
+                  </td>
+                  <td style={{ padding: "10px 14px", fontWeight: 500, color: colors.text, whiteSpace: "nowrap" }}>{s.name}</td>
+                  <td style={{ padding: "10px 14px", color: colors.textSecondary, whiteSpace: "nowrap" }}>{s.site_type}</td>
+                  <td style={{ padding: "10px 14px" }}>
+                    <Tooltip text={s.assessment?.threshold_source || "NIOSH/OSHA thresholds"}>
+                      <span style={{ padding: "2px 10px", borderRadius: 12, fontSize: 12, fontWeight: 600, color: "#fff", background: getRiskColor(s.assessment?.risk_bucket || "LOW") }}>
+                        {s.assessment?.risk_bucket || "N/A"}
+                      </span>
+                    </Tooltip>
+                  </td>
+                  <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: colors.text }}>{s.assessment?.temperature_c?.toFixed(1) || "\u2014"}</td>
+                  <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: colors.text }}>{s.assessment?.heat_index?.toFixed(1) || "\u2014"}</td>
+                  <td style={{ padding: "10px 14px", textAlign: "right", color: colors.text }}>{s.assessment?.exceedance_hours?.toFixed(1) || "\u2014"}h</td>
+                  <td style={{ padding: "10px 14px", textAlign: "right", color: colors.text }}>{s.assessment?.persistence_hours?.toFixed(1) || "\u2014"}h</td>
+                  <td style={{ padding: "10px 14px" }}><button style={{ fontSize: 12, color: colors.accent, background: "none", border: "none", cursor: "pointer" }}>View {"\u2192"}</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         {!siteData.length && <p style={{ padding: 24, textAlign: "center", color: colors.textDim }}>No sites. Go to Setup.</p>}
       </div>
 
@@ -257,7 +314,7 @@ export default function FleetDashboard({ sites, assessments, onSelectSite }: { s
         <div style={{ marginTop: 20, background: colors.surface, borderRadius: 12, padding: 20, border: `1px solid ${colors.accent}40` }}>
           <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: colors.accent }}>Site Comparison</h3>
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 400 }}>
               <thead>
                 <tr style={{ borderBottom: `1px solid ${colors.border}` }}>
                   <th style={{ textAlign: "left", padding: "8px 12px", color: colors.textMuted, fontSize: 11, textTransform: "uppercase" }}>Metric</th>
