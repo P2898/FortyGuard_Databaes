@@ -113,7 +113,7 @@ export default function FleetDashboard({ sites, assessments, onSelectSite, onNav
   const tableRef = useRef<HTMLDivElement>(null);
 
   const scrollToTable = useCallback(() => {
-    tableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    tableRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, []);
 
   const statCards: { label: string; value: string; color: string; onClick?: () => void; hint: string }[] = [
