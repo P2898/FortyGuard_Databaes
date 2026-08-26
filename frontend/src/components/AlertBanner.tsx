@@ -69,7 +69,7 @@ export default function AlertBanner({
           {top.name}
         </span>
         <span style={{ fontSize: 12, color: colors.textMuted }}>
-          {top.temperature_c.toFixed(1)}°C · Heat Index {top.heat_index.toFixed(1)}
+          {top.temperature_c.toFixed(1)}°C / {((top.temperature_c * 9/5) + 32).toFixed(0)}°F · Heat Index {top.heat_index.toFixed(1)}°C / {((top.heat_index * 9/5) + 32).toFixed(0)}°F
         </span>
         {top.exceedance_hours > 0 && (
           <span

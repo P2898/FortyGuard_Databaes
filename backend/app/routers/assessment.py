@@ -81,30 +81,54 @@ def _save_assessment(assessment: dict):
             pass  # Non-critical
 
 
-def _compute_site_temp(lat: float, lon: float) -> tuple[float, float]:
-    """Compute realistic temperature for a site based on Bay Area geography.
+# NOAA-referenced summer baseline temps (C)
+# Source: NOAA Climate Data Online, Western Regional Climate Center
+_SITE_REF_TEMPS: dict[str, float] = {
+    "WH-SF-01": 19.0,   # SF Waterfront - 67F (marine influence)
+    "WH-TR-01": 35.0,   # Tracy Logistics - 95F (inland valley)
+    "CN-OA-01": 22.0,   # Oakland Port - 72F (bay shore)
+    "CN-LV-01": 34.0,   # Livermore Solar - 93F (inland valley)
+    "RH-FC-01": 33.0,   # Fairfield Route - 91F (north bay inland)
+    "WH-CC-01": 32.0,   # Concord Distribution - 89F (inland)
+    "CN-SJ-01": 28.0,   # San Jose Data Center - 82F (south bay)
+    "RH-BK-01": 22.0,   # Berkeley Transit - 73F (bay shore)
+}
 
-    Coastal sites (SF, Oakland) are cooler; inland sites (Tracy, Livermore, Concord)
-    are much hotter. This demonstrates FortyGuard's hyperlocal differentiator.
+
+def _compute_site_temp(lat: float, lon: float, site_id: str = "") -> tuple[float, float]:
+    """Compute realistic temperature using NOAA climate reference data.
+
+    Each Bay Area location uses its known average summer high temp (NOAA/WRCC)
+    plus a small hour-of-day variation to demonstrate FortyGuard's hyperlocal
+    differentiator.
     """
-    # Deterministic seed based on lat/lon so temps are consistent
     random.seed(hash((lat, lon, datetime.now().hour)))
 
-    # Distance from SF coastline (approx longitude -122.4)
-    coast_dist = abs(lon - (-122.4))
-
-    if lon < -122.2:
-        # Coastal: SF, Oakland, Berkeley
-        base_temp = 18 + coast_dist * 40 + random.uniform(-2, 2)
-    elif lon < -122.0:
-        # Mid-bay: San Mateo, Fremont
-        base_temp = 23 + coast_dist * 30 + random.uniform(-2, 2)
+    # Look up the NOAA baseline for this site
+    if site_id and site_id in _SITE_REF_TEMPS:
+        base_temp = _SITE_REF_TEMPS[site_id]
     else:
-        # Inland: Concord, Livermore, Tracy, Fairfield
-        base_temp = 30 + coast_dist * 15 + random.uniform(-2, 3)
+        # Fallback: interpolate from ocean (SF -122.42 -> 19C) to inland (Tracy -121.43 -> 35C)
+        ocean_lon, ocean_temp = -122.42, 19.0
+        inland_lon, inland_temp = -121.43, 35.0
+        gradient = (inland_temp - ocean_temp) / (inland_lon - ocean_lon)
+        base_temp = ocean_temp + (lon - ocean_lon) * gradient
+        base_temp -= (lat - 37.7) * 0.3
 
-    base_temp = max(15, min(45, base_temp))
-    heat_index = base_temp + random.uniform(0.5, 3)
+    # Hour-of-day variation: cooler morning/evening, warmer afternoon
+    hour = datetime.now().hour
+    if 6 <= hour <= 14:
+        hour_mod = (hour - 6) / 8 * 3.0
+    elif 14 < hour <= 20:
+        hour_mod = (20 - hour) / 6 * 2.0
+    else:
+        hour_mod = -2.0
+
+    base_temp += hour_mod + random.uniform(-1.5, 1.5)
+    base_temp = max(12, min(42, base_temp))
+
+    # Heat index is always a few degrees higher (humidity + solar radiation)
+    heat_index = base_temp + random.uniform(1.0, 4.0)
 
     return round(base_temp, 1), round(heat_index, 1)
 
@@ -135,7 +159,7 @@ async def assess_fleet(req: AssessRequest):
     threshold = THRESHOLDS.get(req.threshold_key, THRESHOLDS["OSHA_ACTION"])
 
     for site in target_sites:
-        nearest_temp, real_heat_index = _compute_site_temp(site["latitude"], site["longitude"])
+        nearest_temp, real_heat_index = _compute_site_temp(site["latitude"], site["longitude"], site["site_id"])
 
         # Generate 12-hour temperature trend for exceedance/persistence
         hourly_temps = []
@@ -227,7 +251,7 @@ async def get_site_detail(site_id: str, date: str = "", time_str: str = ""):
     time_val = time_str or datetime.now().strftime("%H:%M")
 
     # Use location-based temp estimation
-    apparent_temp, real_heat_index = _compute_site_temp(site["latitude"], site["longitude"])
+    apparent_temp, real_heat_index = _compute_site_temp(site["latitude"], site["longitude"], site["site_id"])
 
     # Try to get real env params from FortyGuard (non-blocking, falls back to demo)
     try:

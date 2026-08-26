@@ -40,7 +40,7 @@ export default function SiteDetail({ siteId, onBack }: { siteId: string; onBack:
   const { site, hourly_temps, risk, env_params } = detail;
 
   const statRows: [string, string][] = [
-    ["Temperature", risk.temperature_c + String.fromCharCode(176) + "C"],
+    ["Temperature", risk.temperature_c + String.fromCharCode(176) + "C / " + ((risk.temperature_c * 9/5) + 32).toFixed(0) + String.fromCharCode(176) + "F"],
     ["Heat Index", String(risk.heat_index)],
     ["Risk", risk.risk_bucket],
     ["Exceedance", risk.exceedance_hours + "h"],

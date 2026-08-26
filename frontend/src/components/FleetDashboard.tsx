@@ -133,7 +133,7 @@ export default function FleetDashboard({ sites, assessments, onSelectSite, onNav
     },
     {
       label: "Avg Temp",
-      value: avgTemp.toFixed(1) + "°C",
+      value: avgTemp.toFixed(1) + "°C / " + ((avgTemp * 9/5) + 32).toFixed(0) + "°F",
       color: avgTemp > 32 ? "#f97316" : "#22c55e",
       hint: "Sort by temperature",
       onClick: () => { setRiskFilter("ALL"); setSortBy("temp"); setTimeout(scrollToTable, 50); },
@@ -281,7 +281,7 @@ export default function FleetDashboard({ sites, assessments, onSelectSite, onNav
           <table className="site-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 640 }}>
             <thead>
               <tr style={{ background: colors.bg, borderBottom: `1px solid ${colors.border}` }}>
-                {["", "Site", "Type", "Risk", "Temp C", "Heat Idx", "Exceed", "Persist", ""].map((h) => (
+                {["", "Site", "Type", "Risk", "Temp", "Heat Idx", "Exceed", "Persist", ""].map((h) => (
                   <th key={h || "sel"} style={{ textAlign: ["", "Site", "Type", "Risk"].includes(h) ? "left" : "right", padding: "10px 14px", fontWeight: 600, fontSize: 12, textTransform: "uppercase", color: colors.textMuted, whiteSpace: "nowrap" }}>
                     {h}
                   </th>
@@ -339,8 +339,8 @@ export default function FleetDashboard({ sites, assessments, onSelectSite, onNav
               <tbody>
                 {[
                   { label: "Risk", get: (s: any) => s.assessment?.risk_bucket || "N/A" },
-                  { label: "Temperature", get: (s: any) => s.assessment?.temperature_c?.toFixed(1) + "°C" || "—" },
-                  { label: "Heat Index", get: (s: any) => s.assessment?.heat_index?.toFixed(1) || "—" },
+                  { label: "Temperature", get: (s: any) => s.assessment?.temperature_c ? s.assessment.temperature_c.toFixed(1) + "°C / " + ((s.assessment.temperature_c * 9/5) + 32).toFixed(0) + "°F" : "—" },
+                  { label: "Heat Index", get: (s: any) => s.assessment?.heat_index ? s.assessment.heat_index.toFixed(1) + "°C / " + ((s.assessment.heat_index * 9/5) + 32).toFixed(0) + "°F" : "—" },
                   { label: "Exceedance", get: (s: any) => (s.assessment?.exceedance_hours?.toFixed(1) || "—") + "h" },
                   { label: "Persistence", get: (s: any) => (s.assessment?.persistence_hours?.toFixed(1) || "—") + "h" },
                   { label: "Site Type", get: (s: any) => s.site_type },
