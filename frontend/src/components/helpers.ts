@@ -8,7 +8,16 @@ export function getRiskColor(risk: string): string {
   }
 }
 
-export function getRiskBg(risk: string): string {
+export function getRiskBg(risk: string, theme?: string): string {
+  if (theme === "dark") {
+    switch (risk) {
+      case "CRITICAL": return "#3a1515";
+      case "HIGH": return "#3a2510";
+      case "MEDIUM": return "#3a3010";
+      case "LOW": return "#152a15";
+      default: return "#1a1a2a";
+    }
+  }
   switch (risk) {
     case "CRITICAL": return "#fef2f2";
     case "HIGH": return "#fff7ed";

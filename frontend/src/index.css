@@ -2,14 +2,14 @@
 
 @layer base {
   :root {
-    --color-bg: #0a0f1a;
-    --color-surface: #111827;
-    --color-border: #1e293b;
-    --color-text: #f1f5f9;
-    --color-muted: #94a3b8;
-    --color-accent: #06b6d4;
-    --color-primary: #1B2A4A;
-    --color-amber: #F2994A;
+    --color-bg: #0e1019;
+    --color-surface: #161a28;
+    --color-border: #262c42;
+    --color-text: #e8e4df;
+    --color-muted: #9a928a;
+    --color-accent: #c07a28;
+    --color-primary: #1a1d30;
+    --color-amber: #c07a28;
     --color-danger: #ef4444;
     --color-warning: #f59e0b;
     --color-success: #22c55e;
@@ -35,30 +35,30 @@ body {
 
 /* Leaflet overrides for dark theme */
 .leaflet-container {
-  background: #0a0f1a;
+  background: #0c0e1a;
   font-family: inherit;
 }
 
 .leaflet-popup-content-wrapper {
-  background: #1e293b;
-  color: #e2e8f0;
+  background: #1c2035;
+  color: #e8e4df;
   border-radius: 10px;
-  border: 1px solid #334155;
+  border: 1px solid #3a3f5c;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
 .leaflet-popup-tip {
-  background: #1e293b;
+  background: #1c2035;
 }
 
 .leaflet-popup-close-button {
-  color: #64748b;
+  color: #6d6560;
 }
 
 .leaflet-control-zoom a {
-  background: #1e293b !important;
-  color: #e2e8f0 !important;
-  border-color: #334155 !important;
+  background: #1c2035 !important;
+  color: #e8e4df !important;
+  border-color: #3a3f5c !important;
 }
 
 /* Scrollbar */
@@ -74,18 +74,18 @@ body {
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: #4a4540;
 }
 
 /* Selection */
 ::selection {
-  background: #06b6d440;
-  color: #e2e8f0;
+  background: #c07a2840;
+  color: #e8e4df;
 }
 
 /* Input focus */
 input:focus, select:focus, textarea:focus {
-  outline: 2px solid #06b6d4;
+  outline: 2px solid #c07a28;
   outline-offset: -1px;
 }
 
@@ -104,12 +104,12 @@ tbody tr {
   transition: background 0.1s;
 }
 tbody tr:hover {
-  background: #1e293b;
+  background: #1c2035;
 }
 
 /* Link styles */
 a {
-  color: #06b6d4;
+  color: #c07a28;
   text-decoration: none;
 }
 a:hover {
@@ -191,8 +191,8 @@ a:hover {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: rgba(15, 23, 42, 0.85);
-  color: #e2e8f0;
+  background: rgba(20, 23, 39, 0.9);
+  color: #e8e4df;
   padding: 10px 20px;
   border-radius: 8px;
   font-size: 14px;
@@ -200,7 +200,7 @@ a:hover {
   pointer-events: none;
   z-index: 10000;
   white-space: nowrap;
-  border: 1px solid #334155;
+  border: 1px solid #3a3f5c;
   animation: pegmanHint 1.5s ease-in-out infinite;
 }
 

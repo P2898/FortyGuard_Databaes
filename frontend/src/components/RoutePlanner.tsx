@@ -68,7 +68,7 @@ export default function RoutePlanner({ initialOriginId, initialDestId, onRoutePl
     sites.forEach((s) => {
       const icon = L.divIcon({
         className: "",
-        html: '<div style="width:12px;height:12px;border-radius:50%;background:#06b6d4;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div>',
+        html: '<div style="width:12px;height:12px;border-radius:50%;background:#c07a28;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div>',
         iconSize: [12, 12],
         iconAnchor: [6, 6],
       });
@@ -301,7 +301,7 @@ export default function RoutePlanner({ initialOriginId, initialDestId, onRoutePl
           <div style={{ display: "flex", gap: 16, marginTop: 12, fontSize: 12, color: colors.textSecondary }}>
             <span><span style={{ display: "inline-block", width: 20, height: 3, background: "#3b82f6", marginRight: 4, verticalAlign: "middle" }}></span> Fastest route</span>
             <span><span style={{ display: "inline-block", width: 20, height: 3, background: "linear-gradient(90deg, #22c55e, #eab308, #ef4444)", marginRight: 4, verticalAlign: "middle" }}></span> Coolest route (heat-colored)</span>
-            <span style={{ color: colors.textMuted }}>Mode: {travelMode === "drive" ? "Driving" : "Walking"}</span>
+            <span style={{ color: colors.textMuted }}>Mode: {travelMode === "drive" ? "Driving" : travelMode === "ride" ? "Cycling" : "Walking"}</span>
           </div>
         </>
       )}

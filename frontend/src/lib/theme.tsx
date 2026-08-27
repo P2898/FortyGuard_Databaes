@@ -9,29 +9,29 @@ interface ThemeContextType {
 }
 
 const DARK_COLORS = {
-  bg: "#0a0f1a",
-  surface: "#111827",
-  surfaceHover: "#1e293b",
-  border: "#1e293b",
-  borderLight: "#334155",
-  text: "#e2e8f0",
-  textSecondary: "#94a3b8",
-  textMuted: "#64748b",
-  textDim: "#475569",
-  accent: "#06b6d4",
+  bg: "#0e1019",
+  surface: "#161a28",
+  surfaceHover: "#1e2234",
+  border: "#262c42",
+  borderLight: "#3a4060",
+  text: "#e8e4df",
+  textSecondary: "#9a928a",
+  textMuted: "#685f58",
+  textDim: "#48403a",
+  accent: "#c07a28",
 };
 
 const LIGHT_COLORS = {
-  bg: "#f1f5f9",
+  bg: "#f6f3ef",
   surface: "#ffffff",
-  surfaceHover: "#f8fafc",
-  border: "#e2e8f0",
-  borderLight: "#cbd5e1",
-  text: "#0f172a",
-  textSecondary: "#475569",
-  textMuted: "#64748b",
-  textDim: "#94a3b8",
-  accent: "#0891b2",
+  surfaceHover: "#faf8f5",
+  border: "#e2dbd3",
+  borderLight: "#ccc4bb",
+  text: "#1c1610",
+  textSecondary: "#5a5048",
+  textMuted: "#7a7068",
+  textDim: "#a8a098",
+  accent: "#a86018",
 };
 
 const ThemeContext = createContext<ThemeContextType>({

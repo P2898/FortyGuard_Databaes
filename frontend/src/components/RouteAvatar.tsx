@@ -203,7 +203,7 @@ export function RoutePlayback({
           onClick={startPlayback}
           style={{
             padding: "8px 20px",
-            background: "#06b6d4",
+            background: "#c07a28",
             color: "#fff",
             borderRadius: 8,
             border: "none",

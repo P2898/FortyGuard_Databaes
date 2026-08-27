@@ -166,7 +166,7 @@ export default function HeatPLScreen() {
             width: 120,
             height: 120,
             borderRadius: "50%",
-            background: "radial-gradient(circle, #06b6d420, transparent)",
+            background: "radial-gradient(circle, #c07a2820, transparent)",
           }}
         />
         <div style={{ fontSize: 14, opacity: 0.7 }}>

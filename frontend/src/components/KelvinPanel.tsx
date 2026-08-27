@@ -1,344 +1,797 @@
-import { useState, useRef, useEffect } from "react";
-import * as api from "../lib/api";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { sendChat, transcribeAudio, type ChatMessage } from "../lib/api";
 import { useTheme } from "../lib/theme";
+import TypingText from "./TypingText";
 
-function KelvinAvatar({ level, speaking }: { level: string; speaking: boolean }) {
-  const bgColor =
-    level === "CRITICAL"
-      ? "linear-gradient(135deg, #dc2626, #991b1b)"
-      : level === "HIGH"
-        ? "linear-gradient(135deg, #ea580c, #c2410c)"
-        : level === "MEDIUM"
-          ? "linear-gradient(135deg, #d97706, #b45309)"
-          : "linear-gradient(135deg, #06b6d4, #0891b2)";
-
-  const eyeChar = level === "CRITICAL" ? "!" : level === "HIGH" ? "~" : "\u2022";
-  const glowColor =
-    level === "CRITICAL" ? "#ef4444" : level === "HIGH" ? "#f97316" : "#06b6d4";
-
-  return (
-    <div style={{ position: "relative", flexShrink: 0 }}>
-      <div
-        style={{
-          width: 64,
-          height: 64,
-          borderRadius: "50%",
-          background: bgColor,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: 24,
-          color: "white",
-          boxShadow: `0 0 ${speaking ? 30 : 15}px ${glowColor}60`,
-          transition: "box-shadow 0.3s ease",
-          animation: speaking ? "pulse 1s infinite" : "none",
-        }}
-      >
-        <div style={{ display: "flex", gap: 6, fontWeight: 700 }}>
-          <span style={{ animation: speaking ? "blink 0.5s infinite" : "none" }}>{eyeChar}</span>
-          <span style={{ animation: speaking ? "blink 0.5s infinite 0.1s" : "none" }}>{eyeChar}</span>
-        </div>
-      </div>
-      <div
-        style={{
-          position: "absolute",
-          bottom: -2,
-          right: -2,
-          width: 16,
-          height: 16,
-          borderRadius: "50%",
-          background: level === "CRITICAL" ? "#ef4444" : level === "HIGH" ? "#f97316" : "#22c55e",
-          border: "2px solid #111827",
-        }}
-      />
-      <style>{`
-        @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
-        @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
-      `}</style>
-    </div>
-  );
+// ─── Text-to-Speech helper ───────────────────────────────────────────
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/#{1,3}\s/g, "")
+    .replace(/\n{2,}/g, ". ")
+    .replace(/\n/g, " ")
+    .replace(/•/g, "")
+    .replace(/📌|🎯|⏱️|🤖|📚/g, "");
 }
 
-export default function KelvinPanel({ onNavigateRoute }: { onNavigateRoute?: (originId: string, destId: string) => void } = {}) {
+function speakText(text: string, voicePref: string): Promise<void> {
+  return new Promise((resolve) => {
+    if (!window.speechSynthesis) {
+      resolve();
+      return;
+    }
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+
+    const utter = new SpeechSynthesisUtterance(stripMarkdown(text));
+    utter.rate = 1.0;
+    utter.pitch = 1.0;
+    utter.volume = 1.0;
+
+    // Try to pick a voice matching the preference
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length > 0) {
+      if (voicePref === "A") {
+        // Female voice — prefer English female
+        const female = voices.find(
+          (v) => /female|samantha|zira|karen|moira|tessa|google.*female|susan|hearing/i.test(v.name) && v.lang.startsWith("en")
+        ) || voices.find((v) => v.lang.startsWith("en") && /\bf\b/i.test(v.name));
+        if (female) utter.voice = female;
+      } else if (voicePref === "B") {
+        // Male voice — prefer English male
+        const male = voices.find(
+          (v) => /male|daniel|james|david|mark|google.*male|matthew|alex/i.test(v.name) && v.lang.startsWith("en")
+        ) || voices.find((v) => v.lang.startsWith("en") && /\bm\b/i.test(v.name));
+        if (male) utter.voice = male;
+      }
+      // default → let browser choose
+    }
+
+    utter.onend = () => resolve();
+    utter.onerror = () => resolve();
+    window.speechSynthesis.speak(utter);
+  });
+}
+
+function stopSpeech() {
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
+}
+
+interface Props {
+  onNavigateRoute?: (originId: string, destId: string) => void;
+}
+
+interface Message {
+  role: "user" | "kelvin";
+  text: string;
+  timestamp: string;
+  intent?: string;
+  confidence?: number;
+  sources?: { id: string; title: string; score: number }[];
+  suggestions?: string[];
+  agents_invoked?: string[];
+  response_time_ms?: number;
+}
+
+const QUICK_PROMPTS = [
+  "Which site is riskiest right now?",
+  "What did heat cost us today?",
+  "Is it safe to work outdoors?",
+  "What are OSHA heat thresholds?",
+  "Plan a route from Oakland to Tracy",
+  "What compliance requirements do we have?",
+];
+
+export default function KelvinPanel({ onNavigateRoute }: Props) {
   const { colors } = useTheme();
-  const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<{ role: string; text: string; action?: any }[]>([
+  const [messages, setMessages] = useState<Message[]>([
     {
       role: "kelvin",
-      text: "Hi! I'm Kelvin, your heat safety assistant. Ask me about site safety, riskiest sites, routes, or heat costs.",
+      text: "👋 Hi! I'm **Kelvin**, your AI heat safety assistant. I can answer questions about:\n\n• 🔍 **Heat risk** — site safety and risk levels\n• 💰 **Costs** — financial impact of heat\n• 🗺️ **Routes** — heat-optimal path planning\n• 📋 **Compliance** — OSHA/Cal-OSHA regulations\n• 🏥 **Health** — heat-related health effects\n\nTry the quick prompts below, type your question, or click the 🎤 to record your voice!",
+      timestamp: new Date().toLocaleTimeString(),
+      intent: "greeting",
+      confidence: 1.0,
     },
   ]);
-  const [speaking, setSpeaking] = useState(false);
-  const [listening, setListening] = useState(false);
-  const [highestRisk, setHighestRisk] = useState("LOW");
-  const [voiceOption, setVoiceOption] = useState(() => localStorage.getItem("shade_voice") || "default");
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const recognitionRef = useRef<any>(null);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [useAgents, setUseAgents] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [transcribing, setTranscribing] = useState(false);
+  const [voicePref] = useState(() => localStorage.getItem("shade_voice") || "default");
+  const [autoSpeak, setAutoSpeak] = useState(() => localStorage.getItem("shade_auto_speak") !== "false");
+  const [speakingIdx, setSpeakingIdx] = useState<number | null>(null);
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isRecording, transcribing]);
 
-  const speechSupported = typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
-
-  const speak = (text: string) => {
-    const synth = window.speechSynthesis;
-    if (!synth) return;
-    synth.cancel();
-    const u = new SpeechSynthesisUtterance(text.replace(/<[^>]+>/g, ""));
-    if (voiceOption !== "default") {
-      const voices = synth.getVoices();
-      if (voiceOption === "A") {
-        const v = voices.find((v) => /female|zira|samantha|karen|moira/i.test(v.name));
-        if (v) u.voice = v;
-      } else {
-        const v = voices.find((v) => /male|david|daniel| james/i.test(v.name));
-        if (v) u.voice = v;
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        mediaRecorderRef.current.stop();
       }
-    }
-    u.rate = 1.0;
-    u.pitch = 1.0;
-    u.onstart = () => setSpeaking(true);
-    u.onend = () => setSpeaking(false);
-    u.onerror = () => setSpeaking(false);
-    synth.speak(u);
-  };
-
-  const startListening = () => {
-    if (!speechSupported) return;
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.lang = "en-US";
-    recognition.onstart = () => setListening(true);
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      setInput(transcript);
-      setListening(false);
-      setTimeout(() => { sendWithText(transcript); }, 300);
+      stopSpeech();
     };
-    recognition.onerror = () => setListening(false);
-    recognition.onend = () => setListening(false);
-    recognitionRef.current = recognition;
-    recognition.start();
-  };
+  }, []);
 
-  const stopListening = () => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-      setListening(false);
+  // Load browser voices (they load async on some browsers)
+  useEffect(() => {
+    if (window.speechSynthesis) {
+      window.speechSynthesis.getVoices();
+      window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
     }
+  }, []);
+
+  const toggleAutoSpeak = () => {
+    const next = !autoSpeak;
+    setAutoSpeak(next);
+    localStorage.setItem("shade_auto_speak", String(next));
+    if (!next) stopSpeech();
   };
 
-  const sendWithText = async (text: string) => {
-    if (!text.trim()) return;
-    const q = text.trim();
-    setMessages((m) => [...m, { role: "user", text: q }]);
+  const handleSpeak = useCallback(
+    async (text: string, idx: number) => {
+      if (speakingIdx === idx) {
+        stopSpeech();
+        setSpeakingIdx(null);
+        return;
+      }
+      stopSpeech();
+      setSpeakingIdx(idx);
+      await speakText(text, voicePref);
+      setSpeakingIdx(null);
+    },
+    [speakingIdx, voicePref]
+  );
+
+  const handleSend = async (text?: string) => {
+    const msg = text || input.trim();
+    if (!msg || loading) return;
+
+    const userMsg: Message = {
+      role: "user",
+      text: msg,
+      timestamp: new Date().toLocaleTimeString(),
+    };
+
+    setMessages((prev) => [...prev, userMsg]);
+    setInput("");
+    setLoading(true);
+
     try {
-      const res = await api.askKelvin(q);
-      setMessages((m) => [...m, { role: "kelvin", text: res.response, action: res.data?.action || null }]);
-      if (res.data?.risk_bucket) setHighestRisk(res.data.risk_bucket);
-      speak(res.response);
-    } catch {
-      setMessages((m) => [
-        ...m,
-        { role: "kelvin", text: "Sorry, I couldn't process that. Please try again." },
+      const response = await sendChat(msg, useAgents);
+
+      const kelvinMsg: Message = {
+        role: "kelvin",
+        text: response.answer,
+        timestamp: new Date().toLocaleTimeString(),
+        intent: response.intent,
+        confidence: response.confidence,
+        sources: response.sources,
+        suggestions: response.suggestions,
+        agents_invoked: response.agents_invoked || undefined,
+        response_time_ms: response.response_time_ms,
+      };
+
+      setMessages((prev) => [...prev, kelvinMsg]);
+
+      // Auto-speak the response if enabled
+      if (autoSpeak && window.speechSynthesis) {
+        const idx = messages.length + 1; // +1 for user msg we just added
+        handleSpeak(response.answer, idx);
+      }
+    } catch (e) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "kelvin",
+          text: "⚠️ Sorry, I encountered an error processing your request. Please try again.",
+          timestamp: new Date().toLocaleTimeString(),
+          intent: "error",
+          confidence: 0,
+        },
+      ]);
+    }
+    setLoading(false);
+  };
+
+  const toggleRecording = async () => {
+    // STOP recording
+    if (isRecording && mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop();
+      return;
+    }
+
+    // START recording
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 16000,
+        },
+      });
+
+      // Pick the best supported format
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : MediaRecorder.isTypeSupported("audio/webm")
+        ? "audio/webm"
+        : "audio/mp4";
+
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        // Stop timer
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
+
+        // Stop all tracks to release mic
+        stream.getTracks().forEach((track) => track.stop());
+
+        setIsRecording(false);
+
+        // Create audio blob
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+
+        if (audioBlob.size < 500) {
+          // Too short, likely no audio captured
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "kelvin",
+              text: "🔇 Recording was too short. Click 🎤 and speak for at least 1-2 seconds.",
+              timestamp: new Date().toLocaleTimeString(),
+              intent: "info",
+              confidence: 1.0,
+            },
+          ]);
+          return;
+        }
+
+        // Send to backend for transcription
+        console.log(`[voice] Sending ${audioBlob.size} bytes to transcribe...`);
+        setTranscribing(true);
+        try {
+          const result = await transcribeAudio(audioBlob);
+
+          if (result.text && result.text.trim()) {
+            // Got transcription — send it
+            setInput(result.text.trim());
+            setTimeout(() => handleSend(result.text.trim()), 100);
+          } else if (result.message) {
+            // Backend returned a message (e.g., whisper not installed)
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: "kelvin",
+                text: `🎤 **Voice recording captured** (${(audioBlob.size / 1024).toFixed(0)}KB)\n\n${result.message}`,
+                timestamp: new Date().toLocaleTimeString(),
+                intent: "info",
+                confidence: 1.0,
+              },
+            ]);
+          } else {
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: "kelvin",
+                text: "🔇 Could not understand the audio. Please try speaking more clearly or type your message.",
+                timestamp: new Date().toLocaleTimeString(),
+                intent: "info",
+                confidence: 1.0,
+              },
+            ]);
+          }
+        } catch (e: any) {
+          console.error("[voice] Transcription error:", e);
+          const errMsg = e?.message || String(e);
+          let userMsg = "⚠️ **Transcription failed.**\n\n";
+          if (errMsg.includes('Failed to fetch') || errMsg.includes('NetworkError')) {
+            userMsg += "The backend server is not reachable. Make sure it's running on localhost:8000.";
+          } else if (errMsg.includes('timeout') || errMsg.includes('Timeout')) {
+            userMsg += "The server took too long to respond. The backend may be starting up — try again in 30 seconds.";
+          } else if (errMsg.includes('404') || errMsg.includes('Not Found')) {
+            userMsg += "The transcription endpoint is not available on this server. Please restart the backend.";
+          } else {
+            userMsg += `Error: ${errMsg}\n\nYou can type your message instead.`;
+          }
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "kelvin",
+              text: userMsg,
+              timestamp: new Date().toLocaleTimeString(),
+              intent: "error",
+              confidence: 0,
+            },
+          ]);
+        }
+        setTranscribing(false);
+      };
+
+      mediaRecorder.onerror = (event) => {
+        console.error("MediaRecorder error:", event);
+        setIsRecording(false);
+        if (timerRef.current) clearInterval(timerRef.current);
+        stream.getTracks().forEach((t) => t.stop());
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "kelvin",
+            text: "⚠️ **Recording error.** Please check microphone permissions and try again.",
+            timestamp: new Date().toLocaleTimeString(),
+            intent: "error",
+            confidence: 0,
+          },
+        ]);
+      };
+
+      // Start recording
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start(100); // Collect data every 100ms
+      setIsRecording(true);
+      setRecordingTime(0);
+
+      // Start timer
+      timerRef.current = setInterval(() => {
+        setRecordingTime((prev) => prev + 1);
+      }, 1000);
+
+    } catch (e: any) {
+      console.error("Failed to start recording:", e);
+      let errorMsg = "⚠️ **Could not access microphone.**";
+      if (e.name === "NotAllowedError") {
+        errorMsg += "\n\nPlease allow microphone access:\n1. Click the 🔒 lock icon in the address bar\n2. Set Microphone to 'Allow'\n3. Refresh the page";
+      } else if (e.name === "NotFoundError") {
+        errorMsg += "\n\nNo microphone found. Please connect one and try again.";
+      } else {
+        errorMsg += `\n\n${e.message || "Unknown error"}`;
+      }
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "kelvin",
+          text: errorMsg,
+          timestamp: new Date().toLocaleTimeString(),
+          intent: "error",
+          confidence: 0,
+        },
       ]);
     }
   };
 
-  const send = () => {
-    const text = input;
-    setInput("");
-    sendWithText(text);
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
-  const quickQuestions = [
-    "Which site is riskiest?",
-    "What did heat cost us today?",
-    "Is SF Waterfront safe right now?",
-    "Route from Oakland to Tracy",
-  ];
+  const formatMessage = (text: string) => {
+    return text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n/g, '<br/>');
+  };
+
+  const getStatusText = () => {
+    if (transcribing) return "🔄 Transcribing audio...";
+    if (isRecording) return `🎤 Recording... ${formatTime(recordingTime)}`;
+    return "";
+  };
 
   return (
-    <div>
-      <h2 style={{ fontSize: 22, fontWeight: 700, color: colors.text }}>Kelvin {"\u2014"} Safety Assistant</h2>
-      <p style={{ color: colors.textSecondary, marginTop: 2 }}>
-        Deterministic answers from backend data. No LLM makes up numbers.
-      </p>
-
-      <div style={{ display: "flex", gap: 16, marginTop: 20, alignItems: "flex-start" }}>
-        <KelvinAvatar level={highestRisk} speaking={speaking} />
-
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {/* Chat messages */}
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", maxWidth: 900, margin: "0 auto" }}>
+      {/* Header */}
+      <div
+        style={{
+          padding: "16px 20px",
+          borderBottom: `1px solid ${colors.border}`,
+          background: colors.surface,
+          borderRadius: "12px 12px 0 0",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div
             style={{
-              background: colors.surface,
-              borderRadius: 12,
-              border: `1px solid ${colors.border}`,
-              padding: 16,
-              maxHeight: 400,
-              overflowY: "auto",
-              minHeight: 200,
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              background: "linear-gradient(135deg, #c07a28, #a86018)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 20,
             }}
           >
-            {messages.map((m, i) => (
-              <div
-                key={i}
-                style={{
-                  marginBottom: 12,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: m.role === "kelvin" ? "flex-start" : "flex-end",
-                }}
-              >
-                {m.role === "kelvin" && (
-                  <div style={{ fontSize: 10, color: colors.textMuted, marginBottom: 2, marginLeft: 4 }}>
-                    Kelvin
+            🤖
+          </div>
+          <div>
+            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: colors.text }}>Kelvin AI</h2>
+            <p style={{ margin: 0, fontSize: 12, color: colors.textMuted }}>
+              RAG-powered • {messages.length - 1} messages
+            </p>
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 12,
+              color: colors.textSecondary,
+              cursor: "pointer",
+              padding: "4px 10px",
+              borderRadius: 8,
+              background: autoSpeak ? `${colors.accent}15` : "transparent",
+              border: `1px solid ${autoSpeak ? colors.accent : colors.border}`,
+              transition: "all 0.2s",
+            }}
+            onClick={toggleAutoSpeak}
+            title={autoSpeak ? "Auto-speak is ON — click to disable" : "Auto-speak is OFF — click to enable"}
+          >
+            {autoSpeak ? "🔊" : "🔇"}
+            Auto-speak
+          </label>
+          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: colors.textSecondary, cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={useAgents}
+              onChange={(e) => setUseAgents(e.target.checked)}
+              style={{ accentColor: colors.accent }}
+            />
+            Multi-Agent
+          </label>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          padding: "16px 20px",
+          background: colors.bg,
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+        }}
+      >
+        {messages.map((msg, i) => (
+          <div
+            key={i}
+            style={{
+              display: "flex",
+              justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
+              animation: "fadeIn 0.3s ease",
+            }}
+          >
+            <div
+              style={{
+                maxWidth: "80%",
+                padding: "12px 16px",
+                borderRadius: msg.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
+                background: msg.role === "user" ? colors.accent : colors.surface,
+                color: msg.role === "user" ? "#fff" : colors.text,
+                fontSize: 14,
+                lineHeight: 1.6,
+                boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+              }}
+            >
+              {msg.role === "kelvin" && i === messages.length - 1 ? (
+                <TypingText text={msg.text} speed={12} />
+              ) : (
+                <div dangerouslySetInnerHTML={{ __html: formatMessage(msg.text) }} />
+              )}
+
+              {msg.role === "kelvin" && (
+                <>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 6 }}>
+                    <button
+                      onClick={() => handleSpeak(msg.text, i)}
+                      style={{
+                        padding: "3px 8px",
+                        borderRadius: 6,
+                        border: `1px solid ${colors.border}`,
+                        background: speakingIdx === i ? colors.accent : colors.surfaceHover,
+                        color: speakingIdx === i ? "#fff" : colors.textSecondary,
+                        cursor: "pointer",
+                        fontSize: 12,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                        transition: "all 0.15s",
+                      }}
+                      title={speakingIdx === i ? "Stop speaking" : "Read aloud"}
+                    >
+                      {speakingIdx === i ? "⏹ Stop" : "🔊 Speak"}
+                    </button>
                   </div>
-                )}
-                <div
-                  style={{
-                    padding: "10px 16px",
-                    borderRadius: m.role === "kelvin" ? "4px 12px 12px 12px" : "12px 4px 12px 12px",
-                    background: m.role === "kelvin" ? colors.surfaceHover : colors.accent,
-                    color: m.role === "kelvin" ? colors.text : "#fff",
-                    maxWidth: "85%",
-                    fontSize: 14,
-                    lineHeight: 1.5,
-                    whiteSpace: "pre-wrap",
-                  }}
-                >
-                  {m.text}
-                  {m.action?.type === "navigate_route" && onNavigateRoute && (
-                    <div style={{ marginTop: 10 }}>
-                      <button
-                        onClick={() => onNavigateRoute(m.action.origin_id, m.action.dest_id)}
-                        style={{
-                          padding: "8px 16px",
-                          background: `linear-gradient(135deg, ${colors.accent}, #0891b2)`,
-                          color: "#fff",
-                          borderRadius: 8,
-                          border: "none",
-                          cursor: "pointer",
-                          fontWeight: 600,
-                          fontSize: 13,
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 6,
-                          width: "100%",
-                          justifyContent: "center",
-                        }}
-                      >
-                        🗺️ Open Route Planner
-                      </button>
+                  <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${colors.borderLight}` }}>
+                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: 11, color: colors.textMuted }}>
+                    {msg.intent && (
+                      <span style={{ background: colors.surfaceHover, padding: "2px 8px", borderRadius: 10 }}>
+                        📌 {msg.intent}
+                      </span>
+                    )}
+                    {msg.confidence !== undefined && (
+                      <span>🎯 {Math.round(msg.confidence * 100)}%</span>
+                    )}
+                    {msg.response_time_ms && (
+                      <span>⏱️ {msg.response_time_ms}ms</span>
+                    )}
+                    {msg.agents_invoked && msg.agents_invoked.length > 0 && (
+                      <span>🤖 {msg.agents_invoked.join(", ")}</span>
+                    )}
+                  </div>
+
+                  {msg.sources && msg.sources.length > 0 && (
+                    <div style={{ marginTop: 6, fontSize: 11 }}>
+                      <span style={{ color: colors.textMuted }}>📚 Sources: </span>
+                      {msg.sources.map((s, j) => (
+                        <span
+                          key={j}
+                          style={{
+                            background: `${colors.accent}15`,
+                            color: colors.accent,
+                            padding: "1px 6px",
+                            borderRadius: 8,
+                            marginLeft: 4,
+                          }}
+                        >
+                          {s.title} ({Math.round(s.score * 100)}%)
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {msg.suggestions && msg.suggestions.length > 0 && (
+                    <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {msg.suggestions.slice(0, 3).map((s, j) => (
+                        <button
+                          key={j}
+                          onClick={() => handleSend(s)}
+                          style={{
+                            fontSize: 11,
+                            padding: "4px 10px",
+                            borderRadius: 12,
+                            border: `1px solid ${colors.border}`,
+                            background: colors.surfaceHover,
+                            color: colors.textSecondary,
+                            cursor: "pointer",
+                            transition: "all 0.15s",
+                          }}
+                        >
+                          {s}
+                        </button>
+                      ))}
                     </div>
                   )}
                 </div>
-              </div>
-            ))}
-            <div ref={bottomRef} />
+                </>
+              )}
+            </div>
           </div>
+        ))}
 
-          {/* Quick question chips */}
-          <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
-            {quickQuestions.map((q) => (
-              <button
-                key={q}
-                onClick={() => {
-                  setInput("");
-                  sendWithText(q);
-                }}
-                style={{
-                  padding: "5px 12px",
-                  background: colors.surfaceHover,
-                  color: colors.textSecondary,
-                  borderRadius: 16,
-                  border: `1px solid ${colors.borderLight}`,
-                  cursor: "pointer",
-                  fontSize: 12,
-                  transition: "all 0.15s",
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.borderColor = colors.accent;
-                  e.currentTarget.style.color = colors.text;
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.borderColor = colors.borderLight;
-                  e.currentTarget.style.color = colors.textSecondary;
-                }}
-              >
-                {q}
-              </button>
-            ))}
-          </div>
-
-          {/* Input bar */}
-          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-            {speechSupported && (
-              <button
-                onClick={listening ? stopListening : startListening}
-                style={{
-                  padding: "10px 14px",
-                  background: listening ? "#ef4444" : colors.surfaceHover,
-                  color: listening ? "#fff" : colors.textSecondary,
-                  borderRadius: 8,
-                  border: `1px solid ${colors.borderLight}`,
-                  cursor: "pointer",
-                  fontSize: 16,
-                  transition: "all 0.15s",
-                  flexShrink: 0,
-                }}
-                title={listening ? "Stop listening" : "Speak to Kelvin"}
-              >
-                {listening ? "\u23F9" : "\uD83C\uDF99"}
-              </button>
-            )}
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && send()}
-              placeholder="Ask Kelvin about site safety, routes, heat costs..."
+        {/* Recording status banner */}
+        {(isRecording || transcribing) && (
+          <div style={{ display: "flex", justifyContent: "center", animation: "fadeIn 0.2s ease" }}>
+            <div
               style={{
-                flex: 1,
-                padding: "10px 14px",
-                border: `1px solid ${colors.borderLight}`,
-                borderRadius: 8,
-                fontSize: 14,
-                background: colors.bg,
-                color: colors.text,
-              }}
-            />
-            <button
-              onClick={send}
-              disabled={!input.trim()}
-              style={{
-                padding: "10px 20px",
-                background: input.trim() ? colors.accent : colors.borderLight,
-                color: "#fff",
-                borderRadius: 8,
-                border: "none",
-                cursor: "pointer",
-                fontWeight: 600,
-                fontSize: 14,
-                transition: "background 0.15s",
+                padding: "8px 20px",
+                borderRadius: 20,
+                background: isRecording ? "#fef2f2" : colors.surface,
+                border: `1px solid ${isRecording ? "#fca5a5" : colors.border}`,
+                fontSize: 13,
+                color: isRecording ? "#dc2626" : colors.textSecondary,
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
               }}
             >
-              {speaking ? "\uD83D\uDD0A" : "Send"}
-            </button>
-          </div>
-
-          {/* Voice indicator */}
-          {listening && (
-            <div style={{ marginTop: 8, fontSize: 12, color: "#ef4444", display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#ef4444", animation: "pulse 1s infinite" }} />
-              Listening... Speak now
+              {isRecording && (
+                <>
+                  <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#dc2626", animation: "recPulse 1s ease-in-out infinite" }} />
+                  <span style={{ display: "flex", gap: 3, alignItems: "center" }}>
+                    <span style={{ width: 3, height: 12, borderRadius: 2, background: "#dc2626", animation: "soundBar 0.4s ease-in-out infinite alternate" }} />
+                    <span style={{ width: 3, height: 18, borderRadius: 2, background: "#dc2626", animation: "soundBar 0.4s ease-in-out 0.1s infinite alternate" }} />
+                    <span style={{ width: 3, height: 8, borderRadius: 2, background: "#dc2626", animation: "soundBar 0.4s ease-in-out 0.2s infinite alternate" }} />
+                    <span style={{ width: 3, height: 14, borderRadius: 2, background: "#dc2626", animation: "soundBar 0.4s ease-in-out 0.15s infinite alternate" }} />
+                  </span>
+                </>
+              )}
+              {transcribing && <span>🔄</span>}
+              <span>{getStatusText()}</span>
             </div>
-          )}
-        </div>
+          </div>
+        )}
+
+        {loading && (
+          <div style={{ display: "flex", justifyContent: "flex-start" }}>
+            <div
+              style={{
+                padding: "12px 16px",
+                borderRadius: "16px 16px 16px 4px",
+                background: colors.surface,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <div style={{ display: "flex", gap: 4 }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: colors.textMuted, animation: "bounce 1.4s infinite ease-in-out both" }} />
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: colors.textMuted, animation: "bounce 1.4s infinite ease-in-out 0.16s both" }} />
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: colors.textMuted, animation: "bounce 1.4s infinite ease-in-out 0.32s both" }} />
+              </div>
+              <span style={{ fontSize: 12, color: colors.textMuted }}>Kelvin is thinking...</span>
+            </div>
+          </div>
+        )}
+
+        <div ref={messagesEndRef} />
       </div>
+
+      {/* Quick prompts */}
+      <div
+        style={{
+          padding: "8px 16px",
+          display: "flex",
+          gap: 6,
+          overflowX: "auto",
+          background: colors.bg,
+          borderTop: `1px solid ${colors.borderLight}`,
+        }}
+      >
+        {QUICK_PROMPTS.map((prompt, i) => (
+          <button
+            key={i}
+            onClick={() => handleSend(prompt)}
+            disabled={isRecording || transcribing}
+            style={{
+              fontSize: 11,
+              padding: "5px 12px",
+              borderRadius: 14,
+              border: `1px solid ${colors.border}`,
+              background: colors.surface,
+              color: colors.textSecondary,
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+              transition: "all 0.15s",
+              opacity: isRecording || transcribing ? 0.5 : 1,
+            }}
+          >
+            {prompt}
+          </button>
+        ))}
+      </div>
+
+      {/* Input */}
+      <div
+        style={{
+          padding: "12px 16px",
+          borderTop: `1px solid ${colors.border}`,
+          background: colors.surface,
+          display: "flex",
+          gap: 8,
+          borderRadius: "0 0 12px 12px",
+        }}
+      >
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleSend()}
+          placeholder={
+            isRecording
+              ? `🔴 Recording... ${formatTime(recordingTime)} — click ⏹ to stop`
+              : transcribing
+              ? "🔄 Converting speech to text..."
+              : "Ask Kelvin about heat safety, costs, routes, compliance..."
+          }
+          style={{
+            flex: 1,
+            padding: "10px 14px",
+            borderRadius: 10,
+            border: `1px solid ${isRecording ? "#dc2626" : colors.border}`,
+            background: isRecording ? "#fef2f2" : colors.bg,
+            color: colors.text,
+            fontSize: 14,
+            outline: "none",
+            transition: "all 0.2s",
+          }}
+          disabled={loading || transcribing}
+        />
+
+        {/* Mic / Stop button */}
+        <button
+          onClick={toggleRecording}
+          disabled={loading || transcribing}
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 10,
+            border: `2px solid ${isRecording ? "#dc2626" : colors.border}`,
+            background: isRecording ? "#dc2626" : colors.surfaceHover,
+            color: "#fff",
+            cursor: loading || transcribing ? "not-allowed" : "pointer",
+            fontSize: 18,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            animation: isRecording ? "micPulse 1.5s ease-in-out infinite" : "none",
+            transition: "all 0.2s",
+            flexShrink: 0,
+          }}
+          title={isRecording ? "Click to STOP recording" : "Click to START voice recording"}
+        >
+          {isRecording ? "⏹" : "🎤"}
+        </button>
+
+        <button
+          onClick={() => handleSend()}
+          disabled={loading || !input.trim() || isRecording || transcribing}
+          style={{
+            padding: "10px 20px",
+            borderRadius: 10,
+            border: "none",
+            background: input.trim() ? colors.accent : colors.borderLight,
+            color: input.trim() ? "#fff" : colors.textMuted,
+            cursor: input.trim() ? "pointer" : "default",
+            fontSize: 14,
+            fontWeight: 600,
+            transition: "all 0.15s",
+          }}
+        >
+          Send
+        </button>
+      </div>
+
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes bounce {
+          0%, 80%, 100% { transform: scale(0); }
+          40% { transform: scale(1); }
+        }
+        @keyframes micPulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.6); }
+          50% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
+        }
+        @keyframes recPulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.4; transform: scale(0.8); }
+        }
+        @keyframes soundBar {
+          0% { transform: scaleY(0.3); }
+          100% { transform: scaleY(1); }
+        }
+      `}</style>
     </div>
   );
 }

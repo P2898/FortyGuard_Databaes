@@ -97,6 +97,24 @@ export default function FleetMap({
           opacity: 0.3,
         }).addTo(m);
       }
+
+      // Heat ripple for CRITICAL/HIGH sites
+      if (risk === "CRITICAL" || risk === "HIGH") {
+        const rippleColor = risk === "CRITICAL" ? "#ef4444" : "#f97316";
+        const rippleHtml = `
+          <div style="position:relative;width:60px;height:60px;pointer-events:none">
+            <div style="position:absolute;inset:0;border-radius:50%;border:2px solid ${rippleColor};opacity:0;animation:heatRipple 2s ease-out infinite"></div>
+            <div style="position:absolute;inset:0;border-radius:50%;border:2px solid ${rippleColor};opacity:0;animation:heatRipple 2s ease-out 0.7s infinite"></div>
+          </div>
+        `;
+        const rippleIcon = L.divIcon({
+          className: "",
+          html: rippleHtml,
+          iconSize: [60, 60],
+          iconAnchor: [30, 30],
+        });
+        L.marker([s.latitude, s.longitude], { icon: rippleIcon, interactive: false }).addTo(m);
+      }
     });
 
     // Fit map to show all sites

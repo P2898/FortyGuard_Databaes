@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Site, Assessment, getHeatPL } from "../lib/api";
 import { getRiskColor, getRiskBg, exportCSV } from "./helpers";
 import { useTheme } from "../lib/theme";
+import AnimatedCounter from "./AnimatedCounter";
+import ScrollReveal from "./ScrollReveal";
 
 const RISK_ORDER: Record<string, number> = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
 
@@ -116,31 +118,31 @@ export default function FleetDashboard({ sites, assessments, onSelectSite, onNav
     tableRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, []);
 
-  const statCards: { label: string; value: string; color: string; onClick?: () => void; hint: string }[] = [
+  const statCards: { label: string; value: React.ReactNode; color: string; onClick?: () => void; hint: string }[] = [
     {
       label: "Total Sites",
-      value: String(sites.length),
+      value: <AnimatedCounter target={sites.length} style={{ fontSize: 24, fontWeight: 700, color: colors.accent }} />,
       color: colors.accent,
       hint: "Scroll to sites",
       onClick: () => { setRiskFilter("ALL"); setSortBy("risk"); setTimeout(scrollToTable, 50); },
     },
     {
       label: "Active Alerts",
-      value: String(alertCount),
+      value: <AnimatedCounter target={alertCount} style={{ fontSize: 24, fontWeight: 700, color: alertCount > 0 ? "#ef4444" : "#22c55e" }} />,
       color: alertCount > 0 ? "#ef4444" : "#22c55e",
       hint: alertCount > 0 ? "Filter to HIGH/CRITICAL" : "No alerts",
       onClick: alertCount > 0 ? () => { setRiskFilter("CRITICAL"); setTimeout(scrollToTable, 50); } : undefined,
     },
     {
       label: "Avg Temp",
-      value: avgTemp.toFixed(1) + "°C / " + ((avgTemp * 9/5) + 32).toFixed(0) + "°F",
+      value: <><AnimatedCounter target={avgTemp} decimals={1} style={{ fontSize: 24, fontWeight: 700, color: avgTemp > 32 ? "#f97316" : "#22c55e" }} />°C / <AnimatedCounter target={(avgTemp * 9/5) + 32} style={{ fontSize: 24, fontWeight: 700, color: avgTemp > 32 ? "#f97316" : "#22c55e" }} />°F</>,
       color: avgTemp > 32 ? "#f97316" : "#22c55e",
       hint: "Sort by temperature",
       onClick: () => { setRiskFilter("ALL"); setSortBy("temp"); setTimeout(scrollToTable, 50); },
     },
     {
       label: "Daily Heat Cost",
-      value: dailyCost !== null ? "$" + dailyCost.toLocaleString() : "—",
+      value: dailyCost !== null ? <><span style={{ fontSize: 24, fontWeight: 700, color: "#f59e0b" }}>$</span><AnimatedCounter target={dailyCost} prefix={""} style={{ fontSize: 24, fontWeight: 700, color: "#f59e0b" }} /></> : <span style={{ fontSize: 24, color: colors.textMuted }}>—</span>,
       color: "#f59e0b",
       hint: "View Heat P&L",
       onClick: () => onNavigate?.("heatpl"),
@@ -150,6 +152,7 @@ export default function FleetDashboard({ sites, assessments, onSelectSite, onNav
   return (
     <div>
       {/* Quick Stats Row */}
+      <ScrollReveal>
       <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 20 }}>
         {statCards.map((card) => (
           <div
@@ -180,7 +183,7 @@ export default function FleetDashboard({ sites, assessments, onSelectSite, onNav
             }}
           >
             <div style={{ fontSize: 12, color: colors.textMuted, marginBottom: 4 }}>{card.label}</div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: card.color, fontVariantNumeric: "tabular-nums" }}>
+            <div style={{ fontVariantNumeric: "tabular-nums" }}>
               {card.value}
             </div>
             {card.onClick && (
@@ -191,7 +194,9 @@ export default function FleetDashboard({ sites, assessments, onSelectSite, onNav
           </div>
         ))}
       </div>
+      </ScrollReveal>
 
+      <ScrollReveal delay={100}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 8 }}>
         <div>
           <h2 style={{ fontSize: 22, fontWeight: 700, color: colors.text }}>Fleet Dashboard</h2>
@@ -226,6 +231,7 @@ export default function FleetDashboard({ sites, assessments, onSelectSite, onNav
           </button>
         </div>
       </div>
+      </ScrollReveal>
 
       {/* Search & Filter Row */}
       <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
@@ -276,6 +282,7 @@ export default function FleetDashboard({ sites, assessments, onSelectSite, onNav
       )}
 
       {/* Table — horizontal scroll on mobile */}
+      <ScrollReveal delay={200}>
       <div ref={tableRef} style={{ background: colors.surface, borderRadius: 12, border: `1px solid ${colors.border}`, overflow: "hidden", scrollMarginTop: 80 }}>
         <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
           <table className="site-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 640 }}>
@@ -321,6 +328,7 @@ export default function FleetDashboard({ sites, assessments, onSelectSite, onNav
         </div>
         {!siteData.length && <p style={{ padding: 24, textAlign: "center", color: colors.textDim }}>No sites. Go to Setup.</p>}
       </div>
+      </ScrollReveal>
 
       {/* Comparison Panel */}
       {showComparison && selectedSiteData.length >= 2 && (

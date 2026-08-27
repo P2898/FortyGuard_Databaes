@@ -4,7 +4,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import sites, assessment, heat_pl, kelvin, route, reports, streetview
+from app.routers import sites, assessment, heat_pl, kelvin, route, reports, streetview, ai_chat, monitoring, transcribe
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -36,11 +36,15 @@ app.include_router(kelvin.router)
 app.include_router(route.router)
 app.include_router(reports.router)
 app.include_router(streetview.router)
+app.include_router(ai_chat.router)
+app.include_router(monitoring.router)
+app.include_router(transcribe.router)
 
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "service": "shade"}
+    from app.services.monitoring import metrics as monitoring_metrics
+    return {"status": "ok", "service": "shade", "metrics": monitoring_metrics.get_metrics()["health"]}
 
 
 @app.get("/api/config")

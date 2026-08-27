@@ -41,7 +41,7 @@ export default function SiteDetail({ siteId, onBack }: { siteId: string; onBack:
 
   const statRows: [string, string][] = [
     ["Temperature", risk.temperature_c + String.fromCharCode(176) + "C / " + ((risk.temperature_c * 9/5) + 32).toFixed(0) + String.fromCharCode(176) + "F"],
-    ["Heat Index", String(risk.heat_index)],
+    ["Heat Index", risk.heat_index + String.fromCharCode(176) + "C / " + ((risk.heat_index * 9/5) + 32).toFixed(0) + String.fromCharCode(176) + "F"],
     ["Risk", risk.risk_bucket],
     ["Exceedance", risk.exceedance_hours + "h"],
     ["Persistence", risk.persistence_hours + "h"],

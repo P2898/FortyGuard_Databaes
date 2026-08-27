@@ -7,3 +7,6 @@ pydantic==1.10.18
 python-multipart==0.0.6
 osmnx>=1.9.0
 networkx>=3.0
+openai-whisper>=20231117
+imageio-ffmpeg>=0.4.9
+pydub>=0.25.1

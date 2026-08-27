@@ -165,3 +165,73 @@ export const getHeatAtPoint = (lat: number, lon: number) =>
 
 // Config
 export const getConfig = () => fetchJSON<any>('/config');
+
+// AI Chat (RAG-powered)
+export interface ChatMessage {
+  answer: string;
+  intent: string;
+  confidence: number;
+  sources: { id: string; title: string; score: number }[];
+  suggestions: string[];
+  agents_invoked: string[] | null;
+  response_time_ms: number;
+}
+
+export const sendChat = (message: string, useAgents = false) =>
+  fetchJSON<ChatMessage>('/ai/chat', { method: 'POST', body: JSON.stringify({ message, use_agents: useAgents }) });
+
+// Monitoring
+export interface MonitoringMetrics {
+  uptime_seconds: number;
+  uptime_human: string;
+  total_requests: number;
+  error_count: number;
+  error_rate_percent: number;
+  avg_response_time_ms: number;
+  p95_response_time_ms: number;
+  cache: { hits: number; misses: number; hit_rate_percent: number };
+  fortyguard: { total_calls: number; errors: number };
+  supabase: { total_calls: number; errors: number };
+  agents: Record<string, { calls: number; avg_latency_ms: number; max_latency_ms: number }>;
+  operations: Record<string, { count: number; avg_ms: number }>;
+  recent_alerts: { type: string; message: string; time_str: string }[];
+  health: { status: string; issues: string[]; indicator: string };
+}
+
+export const getMetrics = () => fetchJSON<MonitoringMetrics>('/monitoring/metrics');
+export const getHealth = () => fetchJSON<{ status: string; issues: string[]; indicator: string }>('/monitoring/health');
+
+// Multi-Agent Analysis
+export interface PortfolioAnalysis {
+  risk: { summary: string; data: any; confidence: number };
+  compliance: { summary: string; data: any; confidence: number };
+  financial: { summary: string; data: any; confidence: number };
+  recommendations: string[];
+  agents_used: string[];
+}
+
+export const analyzePortfolio = () => fetchJSON<PortfolioAnalysis>('/ai/agents/portfolio', { method: 'POST' });
+
+// Audio Transcription — with long timeout for Render cold starts
+export const transcribeAudio = async (audioBlob: Blob) => {
+  const url = `${BASE}/transcribe/audio`;
+  const form = new FormData();
+  form.append('audio', audioBlob, 'recording.webm');
+
+  console.log(`[transcribe] Sending ${audioBlob.size} bytes to ${url}`);
+
+  const res = await fetch(url, {
+    method: 'POST',
+    body: form,
+    signal: AbortSignal.timeout(60000), // 60s for Render cold start
+  });
+
+  console.log(`[transcribe] Response: ${res.status}`);
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || `Server error ${res.status}`);
+  }
+
+  return res.json();
+};

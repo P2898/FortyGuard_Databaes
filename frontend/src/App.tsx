@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   getSites,
   assessFleet,
@@ -20,6 +20,9 @@ import KelvinPanel from "./components/KelvinPanel";
 import SettingsScreen from "./components/SettingsScreen";
 import UploadScreen from "./components/UploadScreen";
 import AlertBanner from "./components/AlertBanner";
+import MonitoringDashboard from "./components/MonitoringDashboard";
+import RiskToast, { type RiskChange } from "./components/RiskToast";
+import TempTicker from "./components/TempTicker";
 import { useTheme } from "./lib/theme";
 
 type View =
@@ -31,7 +34,8 @@ type View =
   | "reports"
   | "kelvin"
   | "settings"
-  | "setup";
+  | "setup"
+  | "monitoring";
 
 const NAV_ITEMS: [View, string, string][] = [
   ["dashboard", "\uD83D\uDCCA", "Dashboard"],
@@ -40,6 +44,7 @@ const NAV_ITEMS: [View, string, string][] = [
   ["heatpl", "\uD83D\uDCB0", "Heat P&L"],
   ["reports", "\uD83D\uDCC4", "Reports"],
   ["kelvin", "\uD83E\uDD16", "Kelvin"],
+  ["monitoring", "\uD83D\uDCCA", "Monitor"],
   ["settings", "\u2699", "Settings"],
 ];
 
@@ -62,6 +67,8 @@ export default function App() {
   const [autoRefresh, setAutoRefresh] = useState<number>(() => {
     return parseInt(localStorage.getItem("shade_auto_refresh") || "0", 10);
   });
+  const [riskChanges, setRiskChanges] = useState<RiskChange[]>([]);
+  const prevAssessmentsRef = useRef<Record<string, string>>({});
 
   const loadSites = useCallback(async () => {
     try {
@@ -78,6 +85,31 @@ export default function App() {
     const start = Date.now();
     try {
       const r = await assessFleet({});
+
+      // Detect risk changes
+      const prev = prevAssessmentsRef.current;
+      const newChanges: RiskChange[] = [];
+      for (const a of r.sites) {
+        const oldRisk = prev[a.site_id];
+        if (oldRisk && oldRisk !== a.risk_bucket) {
+          const site = sites.find((s) => s.site_id === a.site_id);
+          newChanges.push({
+            siteName: site?.name || a.site_id,
+            oldRisk,
+            newRisk: a.risk_bucket,
+            temperature: a.temperature_c,
+          });
+        }
+      }
+      if (newChanges.length > 0) {
+        setRiskChanges((prev) => [...prev, ...newChanges]);
+      }
+
+      // Update refs
+      const next: Record<string, string> = {};
+      for (const a of r.sites) next[a.site_id] = a.risk_bucket;
+      prevAssessmentsRef.current = next;
+
       setAssessments(r.sites);
       setRefreshMs(Date.now() - start);
       setRefreshTime(new Date().toLocaleTimeString());
@@ -100,6 +132,13 @@ export default function App() {
   useEffect(() => {
     if (sites.length) refreshAssessments();
   }, [sites, refreshAssessments]);
+
+  // Refresh Heat P&L after assessments complete (needs cached assessment data)
+  useEffect(() => {
+    if (assessments.length > 0) {
+      getHeatPL().then(setHeatPL).catch(() => {});
+    }
+  }, [assessments]);
 
   // Auto-refresh interval
   useEffect(() => {
@@ -390,6 +429,9 @@ export default function App() {
         {/* Live Alert Banner */}
         <AlertBanner assessments={assessments} onSelectSite={selectSite} />
 
+        {/* Temperature Ticker */}
+        <TempTicker sites={sites} assessments={assessments} />
+
         {/* Content area */}
         <div className="main-content" style={{ flex: 1, padding: 24, overflowY: "auto" }}>
           {view === "setup" && <UploadScreen onDone={loadSites} />}
@@ -429,6 +471,7 @@ export default function App() {
               }}
             />
           )}
+          {view === "monitoring" && <MonitoringDashboard />}
         </div>
 
         {/* Footer */}
@@ -461,8 +504,8 @@ export default function App() {
           left: 0,
           right: 0,
           display: "none",
-          background: "#111827",
-          borderTop: "1px solid #1e293b",
+          background: colors.surface,
+          borderTop: `1px solid ${colors.border}`,
           justifyContent: "space-around",
           padding: "6px 0",
           zIndex: 999,
@@ -483,7 +526,7 @@ export default function App() {
                   gap: 2,
                   background: "none",
                   border: "none",
-                  color: view === v ? "#06b6d4" : "#64748b",
+                  color: view === v ? "#c07a28" : "#685f58",
                   fontSize: 10,
                   cursor: "pointer",
                   padding: "4px 8px",
@@ -497,8 +540,15 @@ export default function App() {
         )}
       </nav>
 
-      {/* Responsive CSS */}
+      {/* Risk change toasts */}
+      <RiskToast
+        changes={riskChanges}
+        onDismiss={(idx) => setRiskChanges((prev) => prev.filter((_, i) => i !== idx))}
+      />
+
+      {/* Responsive CSS + Animations */}
       <style>{`
+        /* Animations */
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
@@ -507,12 +557,52 @@ export default function App() {
           0%, 100% { opacity: 1; transform: scale(1); }
           50% { opacity: 0.5; transform: scale(1.3); }
         }
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(16px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideInRight {
+          from { opacity: 0; transform: translateX(20px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes heatRipple {
+          0% { transform: scale(0.3); opacity: 0.8; }
+          100% { transform: scale(1.5); opacity: 0; }
+        }
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+        @keyframes countUp {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        /* Page transition */
+        .page-enter {
+          animation: fadeInUp 0.3s ease-out;
+        }
+        /* Card hover effect */
+        .hover-lift {
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .hover-lift:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        /* Skeleton loading */
+        .skeleton {
+          background: linear-gradient(90deg, ${colors.borderLight} 25%, ${colors.surfaceHover} 50%, ${colors.borderLight} 75%);
+          background-size: 200% 100%;
+          animation: shimmer 1.5s infinite;
+          border-radius: 6px;
+        }
         /* Table row hover — works in both dark and light mode */
         .site-table tbody tr {
-          transition: background 0.1s;
+          transition: background 0.1s, transform 0.1s;
         }
         .site-table tbody tr:hover {
           background: ${colors.surfaceHover} !important;
+          transform: scale(1.002);
         }
         .site-table tbody tr.selected-row {
           background: ${colors.accent}12 !important;
@@ -526,7 +616,6 @@ export default function App() {
         .comparison-table tbody tr.comp-row:hover {
           background: ${colors.surfaceHover} !important;
         }
-        /* Comparison hint */
         .compare-hint {
           font-size: 11px;
           color: ${colors.textMuted};
@@ -540,7 +629,7 @@ export default function App() {
           .stats-grid { grid-template-columns: 1fr 1fr !important; }
         }
         @media (max-width: 480px) {
-          .stats-grid { gridTemplateColumns: "1fr" !important; }
+          .stats-grid { gridTemplateColumns: 1fr !important; }
         }
       `}</style>
     </div>

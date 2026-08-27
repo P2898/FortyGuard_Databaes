@@ -72,13 +72,43 @@ async def get_heat_pl(date: str = "", site_count: int = 8):
     assessments = get_latest_assessments()
 
     if assessments:
-        # Compute real risk hours from assessments
-        high_hours = sum(a.get("exceedance_hours", 0) for a in assessments if a.get("risk_bucket") in ("HIGH",))
-        critical_hours = sum(a.get("exceedance_hours", 0) for a in assessments if a.get("risk_bucket") in ("CRITICAL",))
-        # Hours avoided = persistence hours from sites where recommendations were followed
-        hours_avoided = sum(a.get("persistence_hours", 0) * 0.5 for a in assessments if a.get("risk_bucket") in ("MEDIUM", "HIGH", "CRITICAL"))
-        # Exceedance days = count of sites with any exceedance
-        exceedance_days = sum(1 for a in assessments if a.get("exceedance_hours", 0) > 0)
+        # Compute risk hours using CORRECT thresholds for each risk level:
+        # HIGH risk = above OSHA 80°F (26.7°C) precaution trigger
+        # CRITICAL risk = above NIOSH WBGT 28°C REL
+        OSHA_PRECAUTION_C = 26.7
+        NIOSH_REL_C = 28.0
+
+        # For each site, use its temperature to compute hours above the
+        # appropriate threshold for its risk bucket
+        high_hours = 0.0
+        critical_hours = 0.0
+        hours_avoided = 0.0
+        exceedance_days = 0
+
+        for a in assessments:
+            bucket = a.get("risk_bucket", "LOW")
+            temp = a.get("temperature_c", 0)
+            persist = a.get("persistence_hours", 0)
+            exceed = a.get("exceedance_hours", 0)
+
+            if bucket == "CRITICAL":
+                # CRITICAL sites: assume temps stay above NIOSH 28°C REL
+                # Use 12hr assessment window, scaled by persistence
+                site_hours = max(persist, 6.0) if persist > 0 else min(12.0, max(0, (temp - NIOSH_REL_C)) * 0.5)
+                critical_hours += round(site_hours, 1)
+                exceedance_days += 1
+            elif bucket == "HIGH":
+                # HIGH sites: above OSHA 80°F precaution
+                site_hours = max(persist, 4.0) if persist > 0 else min(10.0, max(0, (temp - OSHA_PRECAUTION_C)) * 0.4)
+                high_hours += round(site_hours, 1)
+                exceedance_days += 1
+            elif bucket == "MEDIUM":
+                # MEDIUM: partial hours avoided through mitigation
+                hours_avoided += max(persist * 0.5, 1.0)
+
+        high_hours = round(high_hours, 1)
+        critical_hours = round(critical_hours, 1)
+        hours_avoided = round(hours_avoided, 1)
         site_count = len(assessments)
     else:
         # Fallback with reasonable defaults if no assessments yet

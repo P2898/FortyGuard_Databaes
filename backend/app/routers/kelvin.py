@@ -199,10 +199,27 @@ async def ask_kelvin(req: KelvinRequest):
 
     elif intent == "heat_cost":
         assessments = _get_latest_assessments()
-        high_hours = sum(a.get("exceedance_hours", 0) for a in assessments if a.get("risk_bucket") == "HIGH")
-        critical_hours = sum(a.get("exceedance_hours", 0) for a in assessments if a.get("risk_bucket") == "CRITICAL")
-        hours_avoided = sum(a.get("persistence_hours", 0) * 0.5 for a in assessments if a.get("risk_bucket") in ("MEDIUM", "HIGH"))
-        exceedance_days = sum(1 for a in assessments if a.get("exceedance_hours", 0) > 0)
+        # Use same logic as heat_pl endpoint — compute hours from risk buckets + temps
+        OSHA_PRECAUTION_C = 26.7
+        NIOSH_REL_C = 28.0
+        high_hours = 0.0
+        critical_hours = 0.0
+        hours_avoided = 0.0
+        exceedance_days = 0
+        for a in assessments:
+            bucket = a.get("risk_bucket", "LOW")
+            temp = a.get("temperature_c", 0)
+            persist = a.get("persistence_hours", 0)
+            if bucket == "CRITICAL":
+                site_hours = max(persist, 6.0) if persist > 0 else min(12.0, max(0, (temp - NIOSH_REL_C)) * 0.5)
+                critical_hours += round(site_hours, 1)
+                exceedance_days += 1
+            elif bucket == "HIGH":
+                site_hours = max(persist, 4.0) if persist > 0 else min(10.0, max(0, (temp - OSHA_PRECAUTION_C)) * 0.4)
+                high_hours += round(site_hours, 1)
+                exceedance_days += 1
+            elif bucket == "MEDIUM":
+                hours_avoided += max(persist * 0.5, 1.0)
 
         # Read actual company policy from Supabase or in-memory
         from app.routers.heat_pl import _get_policy
