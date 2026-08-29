@@ -11,7 +11,11 @@ function stripMarkdown(text: string): string {
     .replace(/\n{2,}/g, ". ")
     .replace(/\n/g, " ")
     .replace(/•/g, "")
-    .replace(/📌|🎯|⏱️|🤖|📚/g, "");
+    // Remove ALL emojis (Unicode emoji ranges)
+    .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F000}-\u{1FFFF}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu, "")
+    // Clean up extra whitespace
+    .replace(/\s{2,}/g, " ")
+    .trim();
 }
 
 function speakText(text: string, voicePref: string): Promise<void> {
