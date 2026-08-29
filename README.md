@@ -341,6 +341,28 @@ FortyGuard_Databaes/
 
 ---
 
+## Why FortyGuard Was Essential
+
+Shade doesn't work without hyperlocal temperature data. A weather-station grid tells you "it's hot in Tracy" — FortyGrid's 20m resolution tells you **exactly how hot the loading dock at 37.7397, -121.4252 is** — different from the parking lot 50 meters away. The entire value proposition (the 26°F gap, the route temperature delta, the per-site financial impact) depends on resolution that only FortyGuard provides.
+
+---
+
+## Innovation Highlights
+
+1. **WBGT Estimation Without Equipment.** Estimates Wet Bulb Globe Temperature from standard weather data using a simplified Liljegren model — no expensive WBGT monitors needed. A $2,000 sensor replaced by an API call.
+
+2. **"Reschedule & Save."** The forecast shows: *"Move your 2 PM shift to 7 AM — save $2,100 in hazard pay."* That's the single most sellable line for enterprise B2B. It turns a safety warning into a financial decision a CFO can act on.
+
+3. **Self-Measured Forecast Accuracy.** Shade tracks its own prediction accuracy over time ("94% over last 30 days") — a real, self-measured reliability number, not a claim.
+
+---
+
+## Team
+
+- **Bhavya Usha** — Full Stack Development, AI/ML Integration
+
+---
+
 ## Hackathon Submission
 
 **Track:** Primary — Track 3 (Industrial & Enterprise) · Secondary — Track 4 (Government & Environment)
