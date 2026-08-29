@@ -1,0 +1,12 @@
+{
+  "installCommand": "cd frontend && npm install --legacy-peer-deps",
+  "buildCommand": "cd frontend && npx vite build",
+  "outputDirectory": "frontend/dist",
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://shade-api-gbyb.onrender.com/api/:path*"
+    }
+  ]
+}
