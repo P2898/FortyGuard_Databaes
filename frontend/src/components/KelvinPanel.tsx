@@ -219,14 +219,54 @@ export default function KelvinPanel({ onNavigateRoute }: Props) {
     setLoading(false);
   };
 
+  const recognitionRef = useRef<any>(null);
+
   const toggleRecording = async () => {
     // STOP recording
-    if (isRecording && mediaRecorderRef.current) {
-      mediaRecorderRef.current.stop();
+    if (isRecording) {
+      if (recognitionRef.current) { recognitionRef.current.stop(); recognitionRef.current = null; }
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") mediaRecorderRef.current.stop();
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+      setIsRecording(false);
       return;
     }
 
-    // START recording
+    // Try browser SpeechRecognition first (Chrome, Edge — no backend needed)
+    const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognitionAPI) {
+      const recognition = new SpeechRecognitionAPI();
+      recognition.lang = "en-US";
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      recognition.continuous = false;
+      recognition.onstart = () => {
+        setIsRecording(true);
+        setRecordingTime(0);
+        timerRef.current = window.setInterval(() => setRecordingTime((t) => t + 1), 1000);
+      };
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setInput(transcript);
+        setTimeout(() => handleSend(transcript), 100);
+      };
+      recognition.onerror = (event: any) => {
+        setIsRecording(false);
+        if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+        recognitionRef.current = null;
+        const msg = event.error === "not-allowed"
+          ? "Microphone access denied. Please allow microphone permissions."
+          : event.error === "no-speech"
+          ? "No speech detected. Please try speaking more clearly."
+          : `Voice recognition error: ${event.error}`;
+        setMessages((prev) => [...prev, { role: "kelvin", text: msg, timestamp: new Date().toLocaleTimeString(), intent: "info", confidence: 1.0 }]);
+      };
+      recognition.onend = () => { setIsRecording(false); if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; } recognitionRef.current = null; };
+      recognitionRef.current = recognition;
+      recognition.start();
+      return;
+    }
+
+    // Fallback: MediaRecorder + backend transcription
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
