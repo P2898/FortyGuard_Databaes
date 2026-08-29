@@ -95,7 +95,7 @@ function TimelineBar({ checkpoints, compact = false }: { checkpoints: ForecastCh
         const color = RISK_COLORS[cp.risk_bucket] || "#666";
         return (
           <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
-            {!compact && <span style={{ fontSize: 8, color: colors.textMuted }}>{cp.heat_index_c.toFixed(0)}°</span>}
+            {!compact && <span style={{ fontSize: 10, color: colors.textSecondary, fontWeight: 500 }}>{cp.heat_index_c.toFixed(0)}°</span>}
             <div
               style={{
                 width: "100%",
@@ -106,7 +106,7 @@ function TimelineBar({ checkpoints, compact = false }: { checkpoints: ForecastCh
               }}
               title={`${cp.nws_band}: ${cp.heat_index_c.toFixed(1)}°C / ${((cp.heat_index_c * 9) / 5 + 32).toFixed(0)}°F`}
             />
-            <span style={{ fontSize: 8, color: colors.textMuted }}>+{cp.hours_from_now}h</span>
+            <span style={{ fontSize: 10, color: colors.textSecondary }}>+{cp.hours_from_now}h</span>
           </div>
         );
       })}
@@ -431,10 +431,11 @@ function SiteHubCard({
 }
 
 function StatBlock({ label, value, color }: { label: string; value: string; color: string }) {
+  const { colors } = useTheme();
   return (
     <div>
-      <div style={{ fontSize: 11, color: "inherit", opacity: 0.6, marginBottom: 2 }}>{label}</div>
-      <div style={{ fontSize: 20, fontWeight: 700, color }}>{value}</div>
+      <div style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 4, fontWeight: 500 }}>{label}</div>
+      <div style={{ fontSize: 22, fontWeight: 700, color }}>{value}</div>
     </div>
   );
 }

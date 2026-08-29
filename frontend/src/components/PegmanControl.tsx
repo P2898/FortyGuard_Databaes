@@ -12,7 +12,7 @@ import L from "leaflet";
  * and a link to Mapillary street-level imagery.
  */
 
-const PEGMAN_SVG = `
+export const PEGMAN_SVG = `
 <svg viewBox="0 0 28 44" width="28" height="44">
   <!-- Shadow -->
   <ellipse cx="14" cy="42" rx="8" ry="2.5" fill="rgba(0,0,0,0.25)"/>
@@ -140,30 +140,30 @@ function buildPopupHTML(
       <!-- Heat data grid -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">
         <div style="background:#f8fafc;padding:10px;border-radius:8px;border:1px solid #e2e8f0">
-          <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px">Temperature</div>
-          <div style="font-size:20px;font-weight:800;color:${tc};margin-top:2px">${data.temperature_c.toFixed(1)}°C</div>
-          <div style="font-size:11px;color:#9ca3af">${((data.temperature_c * 9) / 5 + 32).toFixed(1)}°F · 2m height</div>
+          <div style="font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Temperature</div>
+          <div style="font-size:22px;font-weight:800;color:${tc};margin-top:2px">${data.temperature_c.toFixed(1)}°C</div>
+          <div style="font-size:12px;color:#475569">${((data.temperature_c * 9) / 5 + 32).toFixed(1)}°F · 2m height</div>
         </div>
         <div style="background:#f8fafc;padding:10px;border-radius:8px;border:1px solid #e2e8f0">
-          <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px">Heat Index</div>
-          <div style="font-size:20px;font-weight:800;color:${hc};margin-top:2px">${data.heat_index_c.toFixed(1)}°C</div>
-          <div style="font-size:11px;color:#9ca3af">${((data.heat_index_c * 9) / 5 + 32).toFixed(1)}°F · NIOSH source</div>
+          <div style="font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Heat Index</div>
+          <div style="font-size:22px;font-weight:800;color:${hc};margin-top:2px">${data.heat_index_c.toFixed(1)}°C</div>
+          <div style="font-size:12px;color:#475569">${((data.heat_index_c * 9) / 5 + 32).toFixed(1)}°F · NIOSH source</div>
         </div>
         <div style="background:#f8fafc;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0">
-          <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px">Humidity</div>
-          <div style="font-size:16px;font-weight:700;color:#1a1a2e;margin-top:2px">${data.humidity}%</div>
+          <div style="font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Humidity</div>
+          <div style="font-size:18px;font-weight:700;color:#1e293b;margin-top:2px">${data.humidity}%</div>
         </div>
         <div style="background:#f8fafc;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0">
-          <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px">Solar Irradiance</div>
-          <div style="font-size:16px;font-weight:700;color:#1a1a2e;margin-top:2px">${data.solar_irradiance} W/m²</div>
+          <div style="font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Solar Irradiance</div>
+          <div style="font-size:18px;font-weight:700;color:#1e293b;margin-top:2px">${data.solar_irradiance} W/m²</div>
         </div>
       </div>
 
       <!-- AQI bar -->
       <div style="margin-bottom:10px">
         <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
-          <span style="color:#6b7280">Air Quality Index</span>
-          <span style="font-weight:600;color:#1a1a2e">${data.aqi}</span>
+          <span style="color:#475569;font-weight:500">Air Quality Index</span>
+          <span style="font-weight:700;color:#1e293b">${data.aqi}</span>
         </div>
         <div style="height:4px;background:#e5e7eb;border-radius:2px;overflow:hidden">
           <div style="height:100%;width:${Math.min(data.aqi / 150, 1) * 100}%;background:${data.aqi < 50 ? "#22c55e" : data.aqi < 100 ? "#eab308" : "#ef4444"};border-radius:2px"></div>
@@ -171,7 +171,7 @@ function buildPopupHTML(
       </div>
 
       <!-- Source badge -->
-      <div style="font-size:10px;color:#9ca3af;margin-bottom:10px;text-align:center">
+      <div style="font-size:10px;color:#64748b;margin-bottom:10px;text-align:center;font-weight:500">
         Powered by FortyGuard · 20m resolution · 2m human-height data
       </div>
 

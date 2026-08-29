@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import L from "leaflet";
 import { planRoute, getRouteSites, RouteSite, RouteResult } from "../lib/api";
+import { PEGMAN_SVG as PEGMAN_BASE } from "./PegmanControl";
 import { addPegmanToMap } from "./PegmanControl";
 import { useTheme } from "../lib/theme";
 
@@ -198,7 +199,12 @@ export default function RoutePlanner({ initialOriginId, initialDestId, onRoutePl
       const bodyColor = avatarOutfit === "construction" ? "#F59E0B" : avatarOutfit === "delivery" ? "#3B82F6" : "#F2994A";
       const accentColor = avatarOutfit === "construction" ? "#92400E" : avatarOutfit === "delivery" ? "#1E3A8A" : "#D97706";
       const helmetColor = avatarOutfit === "construction" ? "#FCD34D" : avatarOutfit === "delivery" ? "#60A5FA" : "#FEF3C7";
-      const PEGMAN_SVG = `<svg viewBox="0 0 28 44" width="32" height="48" style="filter:drop-shadow(0 3px 6px rgba(0,0,0,0.5))"><path d="M14 46 C14 46 2 28 2 16 A12 12 0 0 1 26 16 C26 28 14 46 14 46Z" fill="${bodyColor}" stroke="${accentColor}" stroke-width="1"/><circle cx="14" cy="16" r="10" fill="${helmetColor}" stroke="${bodyColor}" stroke-width="1"/><circle cx="14" cy="12" r="4" fill="${accentColor}"/><path d="M9 18 Q14 16 19 18 L17.5 26 Q14 27.5 10.5 26 Z" fill="${accentColor}"/></svg>`;
+      // Apply outfit colors to the full PEGMAN SVG (with eyes, mouth, etc.)
+      const PEGMAN_SVG = PEGMAN_BASE
+        .replace(/width="28" height="44"/, 'width="32" height="48"')
+        .replace(/#F2994A/g, bodyColor)
+        .replace(/#D97706/g, accentColor)
+        .replace(/#FDE68A/g, helmetColor);
       const pegmanIcon = L.divIcon({
         className: "pegman-marker",
         html: PEGMAN_SVG,

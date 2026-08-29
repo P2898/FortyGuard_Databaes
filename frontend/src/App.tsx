@@ -181,6 +181,24 @@ export default function App() {
     return () => window.removeEventListener("navigate-site", handler as EventListener);
   }, []);
 
+  // Listen for navigate-route events from Kelvin chatbot
+  useEffect(() => {
+    const handler = (e: CustomEvent) => {
+      if (e.detail) {
+        const { origin, destination } = e.detail;
+        // Resolve site names to IDs using sites list
+        const originSite = sites.find(s => s.name.toLowerCase().includes(origin.toLowerCase()) || origin.toLowerCase().includes(s.name.toLowerCase()));
+        const destSite = sites.find(s => s.name.toLowerCase().includes(destination.toLowerCase()) || destination.toLowerCase().includes(s.name.toLowerCase()));
+        if (originSite || destSite) {
+          setRouteNav({ originId: originSite?.site_id || "", destId: destSite?.site_id || "" });
+          setView("route");
+        }
+      }
+    };
+    window.addEventListener("navigate-route", handler as EventListener);
+    return () => window.removeEventListener("navigate-route", handler as EventListener);
+  }, [sites]);
+
   // Get highest risk across all assessments for Kelvin avatar
   const highestRisk = assessments.length
     ? [...assessments].sort((a, b) => {

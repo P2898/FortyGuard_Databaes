@@ -24,6 +24,8 @@ class ChatResponse(BaseModel):
     suggestions: list
     agents_invoked: Optional[list] = None
     response_time_ms: float
+    navigate_to: Optional[str] = None
+    route_params: Optional[dict] = None
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -61,6 +63,8 @@ async def chat(request: ChatRequest):
             suggestions=rag_response["suggestions"],
             agents_invoked=agents_invoked,
             response_time_ms=round(span.duration_ms, 1),
+            navigate_to=rag_response.get("navigate_to"),
+            route_params=rag_response.get("route_params"),
         )
 
     except Exception as e:

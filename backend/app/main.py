@@ -4,7 +4,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import sites, assessment, heat_pl, kelvin, route, reports, streetview, ai_chat, monitoring, transcribe, forecast
+from app.routers import sites, assessment, heat_pl, kelvin, route, reports, streetview, ai_chat, monitoring, transcribe, forecast, heat_prediction
 
 async def _prewarm_assessment():
     """Pre-warm fleet assessment cache on startup so first page load has data."""
@@ -57,6 +57,7 @@ app.include_router(ai_chat.router)
 app.include_router(monitoring.router)
 app.include_router(transcribe.router)
 app.include_router(forecast.router)
+app.include_router(heat_prediction.router)
 
 
 @app.get("/api/health")

@@ -175,6 +175,8 @@ export interface ChatMessage {
   suggestions: string[];
   agents_invoked: string[] | null;
   response_time_ms: number;
+  navigate_to?: string;
+  route_params?: { origin: string; destination: string };
 }
 
 export const sendChat = (message: string, useAgents = false) =>

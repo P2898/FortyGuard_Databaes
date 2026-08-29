@@ -186,6 +186,15 @@ export default function KelvinPanel({ onNavigateRoute }: Props) {
 
       setMessages((prev) => [...prev, kelvinMsg]);
 
+      // Auto-navigate to Routes page if chatbot triggered navigation
+      if (response.navigate_to === "routes" && response.route_params) {
+        const { origin, destination } = response.route_params;
+        // Dispatch custom event so App.tsx can handle navigation
+        window.dispatchEvent(new CustomEvent("navigate-route", {
+          detail: { origin, destination, mode: "drive" }
+        }));
+      }
+
       // Auto-speak the response if enabled
       if (autoSpeak && window.speechSynthesis) {
         const idx = messages.length + 1; // +1 for user msg we just added

@@ -231,10 +231,14 @@ def generate_response(query: str, context_docs: List[Dict], site_data: Dict | No
     site_mentioned = _detect_site_from_query(query, assessments) if assessments else None
 
     intent = _classify_intent(query_lower)
-    if site_mentioned and intent not in ("financial", "route_advice"):
+    if site_mentioned and intent not in ("financial", "route_advice", "route_plan", "heat_illness_prevention"):
         intent = "risk_assessment"
 
-    if intent == "risk_assessment":
+    if intent == "route_plan":
+        response = _generate_route_plan_response(query, context_docs, site_data)
+    elif intent == "heat_illness_prevention":
+        response = _generate_heat_illness_prevention_response(query, context_docs, site_data)
+    elif intent == "risk_assessment":
         response = _generate_risk_response(query, context_docs, site_data)
     elif intent == "financial":
         response = _generate_financial_response(query, context_docs, site_data)
@@ -249,7 +253,7 @@ def generate_response(query: str, context_docs: List[Dict], site_data: Dict | No
     else:
         response = _generate_general_response(query, context_docs, site_data)
 
-    return {
+    result = {
         "answer": response["answer"],
         "intent": intent,
         "confidence": response.get("confidence", 0.85),
@@ -259,9 +263,25 @@ def generate_response(query: str, context_docs: List[Dict], site_data: Dict | No
         ],
         "suggestions": response.get("suggestions", []),
     }
+    # Pass through navigation metadata if present
+    if "navigate_to" in response:
+        result["navigate_to"] = response["navigate_to"]
+    if "route_params" in response:
+        result["route_params"] = response["route_params"]
+    return result
 
 
 def _classify_intent(query: str) -> str:
+    # Route planning navigation — detect "plan a route from X to Y"
+    if any(w in query for w in ["plan a route", "plan route", "route from", "navigate to", "how do i get to", " directions to", "take me to"]):
+        return "route_plan"
+    # Heat illness prevention — detect questions about outdoor safety
+    if any(w in query for w in ["heat illness", "heat stroke", "heat exhaustion", "heat cramp",
+                                  "prevention", "prevent", "safe to work", "safe to do",
+                                  "can i work", "should i work", "is it safe outdoors",
+                                  "is it safe to be outside", "outdoor work today",
+                                  "how hot is it", "worker safety"]):
+        return "heat_illness_prevention"
     # Risk assessment keywords (broadened)
     risk_words = ["safe", "risk", "danger", "critical", "high", "low", "assess", "dangerous",
                    "hottest", "coldest", "warmest", "coolest", "site", "sites", "doing",
@@ -412,7 +432,12 @@ def _generate_route_response(query: str, context: List[Dict], site_data: Dict | 
     for ctx in context[:2]:
         doc = ctx["document"]
         answer += f"• {doc['content'].strip()[:200]}...\n"
-    return {"answer": answer, "confidence": 0.82, "suggestions": ["Use Route Planner to compare fastest vs coolest routes", "Schedule outdoor travel before 10 AM"]}
+    suggestions = ["Use Route Planner to compare fastest vs coolest routes", "Schedule outdoor travel before 10 AM"]
+    result = {"answer": answer, "confidence": 0.82, "suggestions": suggestions}
+    # If query mentions specific route, trigger navigation
+    if any(w in query.lower() for w in ["plan", "route from", "drive from", "go from"]):
+        result["navigate_to"] = "routes"
+    return result
 
 
 def _generate_compliance_response(query: str, context: List[Dict], site_data: Dict | None) -> Dict:
@@ -448,3 +473,200 @@ def _generate_general_response(query: str, context: List[Dict], site_data: Dict 
     if not context:
         answer += "I couldn't find specific information about that topic.\nTry asking about: heat risk, OSHA regulations, costs, routes, compliance, or health effects."
     return {"answer": answer, "confidence": context[0]["relevance_score"] if context else 0.3, "suggestions": ["Ask about heat risk assessment", "Learn about OSHA compliance", "Explore heat cost analysis"]}
+
+
+def _generate_route_plan_response(query: str, context: List[Dict], site_data: Dict | None) -> Dict:
+    """Handle route planning requests — detect origin/destination and trigger navigation."""
+    import re
+    query_lower = query.lower()
+
+    # Try to extract origin and destination from common patterns
+    origin = None
+    dest = None
+
+    # Pattern: "plan a route from X to Y" / "route from X to Y"
+    match = re.search(r'(?:from|origin:?\s*)(.+?)\s+(?:to|destination:?\s*)(.+?)(?:\s+please|\s+in|\s*$)', query_lower)
+    if match:
+        origin = match.group(1).strip().rstrip(',').strip()
+        dest = match.group(2).strip().rstrip(',').strip()
+
+    if not origin or not dest:
+        # Fallback: try "X to Y"
+        match2 = re.search(r'(.+?)\s+to\s+(.+?)(?:\s+please|\s+in|\s+by|\s*$)', query_lower)
+        if match2:
+            origin = match2.group(1).strip().rstrip(',').strip()
+            dest = match2.group(2).strip().rstrip(',').strip()
+
+    # Try to match to known sites
+    if site_data and 'assessments' in site_data:
+        assessments = site_data['assessments']
+        if origin:
+            origin_site = _detect_site_from_query(origin, assessments)
+        else:
+            origin_site = None
+        if dest:
+            dest_site = _detect_site_from_query(dest, assessments)
+        else:
+            dest_site = None
+    else:
+        origin_site = None
+        dest_site = None
+
+    answer = "🗺️ **Route Planning**\n\n"
+    navigate_to_routes = False
+
+    if origin_site and dest_site:
+        answer += f"I'll plan a route from **{origin_site}** to **{dest_site}**.\n\n"
+        answer += "Opening the Route Planner with these locations...\n\n"
+        navigate_to_routes = True
+    elif origin and dest:
+        answer += f"I'll plan a route from **{origin.title()}** to **{dest.title()}**.\n\n"
+        answer += "Opening the Route Planner...\n\n"
+        navigate_to_routes = True
+    elif origin:
+        answer += f"I detected **{origin.title()}** as your origin. Where is your destination?\n\n"
+    elif dest:
+        answer += f"I detected **{dest.title()}** as your destination. Where are you starting from?\n\n"
+    else:
+        answer += "I can plan a heat-safe route for you. Where are you starting and where are you going?\n\n"
+        answer += "For example: **'Plan a route from Oakland to Tracy'**\n"
+
+    # Add route advice from knowledge base
+    for ctx in context[:1]:
+        doc = ctx["document"]
+        answer += f"\n📖 {doc['title']}: {doc['content'].strip()[:200]}...\n"
+
+    suggestions = []
+    if navigate_to_routes:
+        suggestions.append("Navigate to Route Planner")
+    suggestions.extend(["Schedule outdoor travel before 10 AM", "Compare fastest vs coolest routes"])
+
+    result = {
+        "answer": answer,
+        "confidence": 0.90 if (origin_site and dest_site) else 0.75,
+        "suggestions": suggestions,
+    }
+    # Add navigation metadata for frontend
+    if navigate_to_routes:
+        result["navigate_to"] = "routes"
+        result["route_params"] = {
+            "origin": origin_site or origin or "",
+            "destination": dest_site or dest or "",
+        }
+    return result
+
+
+def _generate_heat_illness_prevention_response(query: str, context: List[Dict], site_data: Dict | None) -> Dict:
+    """Generate human-friendly heat illness prevention advice with real-time prediction."""
+    query_lower = query.lower()
+
+    # Run heat illness prediction using current conditions
+    try:
+        from app.services.heat_illness import predict_heat_illness, EnvironmentalConditions
+        from app.routers.assessment import get_latest_assessments
+
+        assessments = get_latest_assessments()
+        if assessments:
+            # Use average conditions across all sites as default
+            avg_temp = sum(a.get('temperature_c', 30) for a in assessments) / len(assessments)
+            avg_hi = sum(a.get('heat_index', 33) for a in assessments) / len(assessments)
+            avg_humidity = 50.0  # Default
+
+            env = EnvironmentalConditions(
+                temperature_c=avg_temp,
+                heat_index_c=avg_hi,
+                humidity_percent=avg_humidity,
+            )
+            prediction = predict_heat_illness(env)
+            prediction_dict = {
+                'probability': prediction.probability_percent,
+                'risk_level': prediction.risk_level,
+                'wbgt': prediction.wbgt_c,
+                'advice': prediction.advice_human,
+                'actions': prediction.advice_actions,
+                'work_rest': prediction.work_rest_recommendation,
+            }
+        else:
+            prediction_dict = None
+    except Exception:
+        prediction_dict = None
+
+    answer = "🛡️ **Heat Illness Prevention Guide**\n\n"
+
+    # Determine if asking about outdoor safety specifically
+    is_outdoor_question = any(w in query_lower for w in [
+        'safe to work', 'safe to do', 'can i work', 'should i work',
+        'outdoor work', 'outside', 'outdoors'
+    ])
+
+    if prediction_dict:
+        risk = prediction_dict['risk_level']
+        prob = prediction_dict['probability']
+        wbgt = prediction_dict['wbgt']
+
+        if is_outdoor_question:
+            # Direct answer to safety question
+            if risk == 'LOW':
+                answer += f"**Yes, it's safe to work outdoors** right now.\n\n"
+                answer += f"The current heat index is around {prediction_dict.get('wbgt', 30):.0f}°C with a {risk} risk level ({prob:.0f}% chance of heat illness).\n\n"
+                answer += "**What you should do:**\n"
+                answer += "• Stay hydrated — drink water every 15-20 minutes\n"
+                answer += "• Take shade breaks if working more than 2 hours\n"
+                answer += "• Best hours: early morning (6-10 AM)\n"
+                answer += "• Watch for: excessive thirst, heavy sweating, fatigue\n\n"
+                answer += "*Bottom line: Go ahead with outdoor work, but stay smart about hydration and rest.*"
+            elif risk == 'MODERATE':
+                answer += f"**Work with caution outdoors.**\n\n"
+                answer += f"The heat index is elevated ({prob:.0f}% risk). Heat cramps and exhaustion are possible.\n\n"
+                answer += "**What you should do:**\n"
+                answer += "• Mandatory rest breaks every 30-45 minutes\n"
+                answer += "• Drink water every 15 minutes — no waiting until you're thirsty\n"
+                answer += "• Reschedule heavy tasks to before 10 AM or after 4 PM\n"
+                answer += "• Use the buddy system — check on each other\n"
+                answer += "• Have cooling towels and ice packs ready\n\n"
+                answer += "*Bottom line: You can work, but take it easy and don't push through fatigue.*"
+            elif risk in ('HIGH', 'VERY_HIGH'):
+                answer += f"**Limit outdoor exposure — conditions are risky.**\n\n"
+                answer += f"The heat index is high ({prob:.0f}% risk). Heat exhaustion is likely with prolonged work.\n\n"
+                answer += "**What you should do:**\n"
+                answer += "• STOP heavy outdoor work from 12:00-3:00 PM\n"
+                answer += "• If you must work: 15 min rest every 30 min of work\n"
+                answer += "• Safety buddy assigned to every worker\n"
+                answer += "• Emergency cooling station within 50 feet\n"
+                answer += "• If anyone feels dizzy, nauseous, or stops sweating — STOP and get help\n\n"
+                answer += "*Bottom line: Avoid outdoor work during peak hours. If you must, follow strict rest schedules.*"
+            else:  # EXTREME
+                answer += f"**🚨 DO NOT work outdoors right now.**\n\n"
+                answer += f"The heat index is extreme ({prob:.0f}% risk). Heat stroke is highly likely and can be fatal.\n\n"
+                answer += "**Immediate actions:**\n"
+                answer += "• Move ALL workers to cool/shaded areas now\n"
+                answer += "• Provide cold water and ice immediately\n"
+                answer += "• If anyone shows confusion, hot/dry skin, or seizures — call 911\n"
+                answer += "• Monitor every worker for 2 hours after leaving the heat\n\n"
+                answer += "*Bottom line: This is a life-safety situation. No outdoor work until conditions improve.*"
+        else:
+            # General heat illness prevention advice
+            answer += f"**Current risk level: {risk}** ({prob:.0f}% probability of heat illness)\n\n"
+            answer += prediction_dict['advice'] + "\n\n"
+            answer += f"**Recommended work schedule:** {prediction_dict['work_rest']}\n\n"
+    else:
+        # Fallback — use knowledge base only
+        answer += "Based on OSHA and NIOSH guidelines:\n\n"
+
+    # Add knowledge base context
+    for ctx in context[:2]:
+        doc = ctx["document"]
+        answer += f"\n📖 **{doc['title']}**: {doc['content'].strip()[:200]}...\n"
+
+    answer += "\n\n---\n*For emergencies, call 911. This guidance is based on NIOSH/OSHA standards. Always consult your site safety officer.*"
+
+    return {
+        "answer": answer,
+        "confidence": 0.93 if prediction_dict else 0.85,
+        "suggestions": [
+            "Check specific site temperatures on Dashboard",
+            "View Heat P&L for financial impact",
+            "Set up heat alerts in Settings",
+            "Generate OSHA compliance report",
+        ],
+    }
