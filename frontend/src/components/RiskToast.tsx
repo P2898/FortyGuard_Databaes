@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useTheme } from "../lib/theme";
+import { formatTemperature } from "./helpers";
 
 export interface RiskChange {
   siteName: string;
@@ -86,7 +87,7 @@ export default function RiskToast({ changes, onDismiss }: Props) {
             </span>
           </div>
           <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 4 }}>
-            🌡️ {change.temperature.toFixed(1)}°C / {((change.temperature * 9) / 5 + 32).toFixed(0)}°F
+            🌡️ {formatTemperature(change.temperature)}
           </div>
         </div>
       ))}

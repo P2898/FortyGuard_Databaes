@@ -1,4 +1,5 @@
 import L from "leaflet";
+import { formatTemperature, getTempColor } from "./helpers";
 
 /**
  * PegmanControl — Google Maps-style pegman for Leaflet.
@@ -64,14 +65,6 @@ export function getUserPegmanSvg(width = 28, height = 44): string {
     .replace(/#FDE68A/g, helmetColor);
 }
 
-function tempColor(tempC: number): string {
-  if (tempC < 22) return "#22c55e";
-  if (tempC < 27) return "#84cc16";
-  if (tempC < 32) return "#eab308";
-  if (tempC < 37) return "#f97316";
-  return "#ef4444";
-}
-
 function tempColorLabel(tempC: number): string {
   if (tempC < 22) return "Cool";
   if (tempC < 27) return "Mild";
@@ -134,8 +127,8 @@ function buildPopupHTML(
       </div>`;
   }
 
-  const tc = tempColor(data.temperature_c);
-  const hc = tempColor(data.heat_index_c);
+  const tc = getTempColor(data.temperature_c);
+  const hc = getTempColor(data.heat_index_c);
   const label = tempColorLabel(data.temperature_c);
 
   return `

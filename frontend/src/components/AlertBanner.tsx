@@ -1,5 +1,6 @@
 import { Assessment } from "../lib/api";
 import { useTheme } from "../lib/theme";
+import { formatTemperature } from "./helpers";
 
 const RISK_COLORS: Record<string, string> = {
   CRITICAL: "#ef4444",
@@ -69,7 +70,7 @@ export default function AlertBanner({
           {top.name}
         </span>
         <span style={{ fontSize: 12, color: colors.textMuted }}>
-          {top.temperature_c.toFixed(1)}°C / {((top.temperature_c * 9/5) + 32).toFixed(0)}°F · Heat Index {top.heat_index.toFixed(1)}°C / {((top.heat_index * 9/5) + 32).toFixed(0)}°F
+          {formatTemperature(top.temperature_c)} · Heat Index {formatTemperature(top.heat_index)}
         </span>
         {top.exceedance_hours > 0 && (
           <span

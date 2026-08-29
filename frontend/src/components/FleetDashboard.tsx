@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Site, Assessment, getHeatPL } from "../lib/api";
-import { getRiskColor, getRiskBg, exportCSV } from "./helpers";
+import { getRiskColor, getRiskBg, exportCSV, formatTemperature } from "./helpers";
 import { useTheme } from "../lib/theme";
 import AnimatedCounter from "./AnimatedCounter";
 import ScrollReveal from "./ScrollReveal";
@@ -347,8 +347,8 @@ export default function FleetDashboard({ sites, assessments, onSelectSite, onNav
               <tbody>
                 {[
                   { label: "Risk", get: (s: any) => s.assessment?.risk_bucket || "N/A" },
-                  { label: "Temperature", get: (s: any) => s.assessment?.temperature_c ? s.assessment.temperature_c.toFixed(1) + "°C / " + ((s.assessment.temperature_c * 9/5) + 32).toFixed(0) + "°F" : "—" },
-                  { label: "Heat Index", get: (s: any) => s.assessment?.heat_index ? s.assessment.heat_index.toFixed(1) + "°C / " + ((s.assessment.heat_index * 9/5) + 32).toFixed(0) + "°F" : "—" },
+                  { label: "Temperature", get: (s: any) => s.assessment?.temperature_c ? formatTemperature(s.assessment.temperature_c) : "—" },
+                  { label: "Heat Index", get: (s: any) => s.assessment?.heat_index ? formatTemperature(s.assessment.heat_index) : "—" },
                   { label: "Exceedance", get: (s: any) => (s.assessment?.exceedance_hours?.toFixed(1) || "—") + "h" },
                   { label: "Persistence", get: (s: any) => (s.assessment?.persistence_hours?.toFixed(1) || "—") + "h" },
                   { label: "Site Type", get: (s: any) => s.site_type },

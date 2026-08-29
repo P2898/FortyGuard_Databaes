@@ -4,14 +4,7 @@ import { planRoute, getRouteSites, RouteSite, RouteResult } from "../lib/api";
 import { getUserPegmanSvg } from "./PegmanControl";
 import { addPegmanToMap } from "./PegmanControl";
 import { useTheme } from "../lib/theme";
-
-function tempToColor(tempC: number): string {
-  if (tempC < 22) return "#22c55e";
-  if (tempC < 27) return "#84cc16";
-  if (tempC < 32) return "#eab308";
-  if (tempC < 37) return "#f97316";
-  return "#ef4444";
-}
+import { formatTemperature, getTempColor } from "./helpers";
 
 interface RoutePlannerProps {
   initialOriginId?: string;
@@ -176,7 +169,7 @@ export default function RoutePlanner({ initialOriginId, initialDestId, onRoutePl
       const seg = coolestCoords.slice(i, Math.min(i + segmentSize + 1, coolestCoords.length));
       if (seg.length < 2) continue;
       const avgTemp = (r.fastest_route.avg_temp_c + r.coolest_route.avg_temp_c) / 2 + (i / coolestCoords.length - 0.5) * 4;
-      const segLine = L.polyline(seg, { color: tempToColor(avgTemp), weight: 6, opacity: 0.9 }).addTo(m);
+      const segLine = L.polyline(seg, { color: getTempColor(avgTemp), weight: 6, opacity: 0.9 }).addTo(m);
       layersRef.current.push(segLine);
     }
     const startIcon = L.divIcon({
@@ -294,11 +287,11 @@ export default function RoutePlanner({ initialOriginId, initialDestId, onRoutePl
             </div>
             <div style={{ flex: 1, minWidth: 140, background: colors.surface, borderRadius: 12, padding: 16, border: `1px solid ${colors.border}` }}>
               <div style={{ fontSize: 12, color: colors.textMuted }}>Fastest avg</div>
-              <div style={{ fontSize: 20, fontWeight: 700, marginTop: 4, color: tempToColor(result.fastest_route.avg_temp_c) }}>{result.fastest_route.avg_temp_c}°C / {((result.fastest_route.avg_temp_c * 9) / 5 + 32).toFixed(1)}°F</div>
+              <div style={{ fontSize: 20, fontWeight: 700, marginTop: 4, color: getTempColor(result.fastest_route.avg_temp_c) }}>{formatTemperature(result.fastest_route.avg_temp_c)}</div>
             </div>
             <div style={{ flex: 1, minWidth: 140, background: colors.surface, borderRadius: 12, padding: 16, border: `1px solid ${colors.border}` }}>
               <div style={{ fontSize: 12, color: colors.textMuted }}>Coolest avg</div>
-              <div style={{ fontSize: 20, fontWeight: 700, marginTop: 4, color: tempToColor(result.coolest_route.avg_temp_c) }}>{result.coolest_route.avg_temp_c}°C / {((result.coolest_route.avg_temp_c * 9) / 5 + 32).toFixed(1)}°F</div>
+              <div style={{ fontSize: 20, fontWeight: 700, marginTop: 4, color: getTempColor(result.coolest_route.avg_temp_c) }}>{formatTemperature(result.coolest_route.avg_temp_c)}</div>
             </div>
           </div>
 

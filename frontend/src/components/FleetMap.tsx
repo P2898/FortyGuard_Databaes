@@ -57,7 +57,7 @@ export default function FleetMap({
       if (!iconCache[risk]) {
         iconCache[risk] = L.divIcon({
           className: "",
-          html: `<div style="width:28px;height:28px;border-radius:50%;background:${color};border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:700;white-space:nowrap"></div>`,
+          html: `<div style="width:28px;height:28px;border-radius:50%;background:${color};border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:700;white-space:nowrap">${Math.round(temp)}°</div>`,
           iconSize: [28, 28],
           iconAnchor: [14, 14],
         });
@@ -65,7 +65,7 @@ export default function FleetMap({
 
       const markerIcon = L.divIcon({
         className: "",
-        html: `<div style="width:28px;height:28px;border-radius:50%;background:${color};border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:700;white-space:nowrap">${Math.round(temp)}\u00b0</div>`,
+        html: `<div style="width:28px;height:28px;border-radius:50%;background:${color};border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:700;white-space:nowrap">${Math.round(temp)}°</div>`,
         iconSize: [28, 28],
         iconAnchor: [14, 14],
       });
@@ -75,12 +75,12 @@ export default function FleetMap({
         .bindPopup(
           `<div style="font-family:system-ui;min-width:160px">
             <div style="font-weight:700;font-size:14px;margin-bottom:4px">${s.name}</div>
-            <div style="color:#64748b;font-size:12px;margin-bottom:8px">${s.site_type.replace("_", " ")} \u00b7 ${s.site_id}</div>
+            <div style="color:#64748b;font-size:12px;margin-bottom:8px">${s.site_type.replace("_", " ")} · ${s.site_id}</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px">
               <div><span style="color:#64748b">Risk:</span> <span style="color:${color};font-weight:600">${risk}</span></div>
-              <div><span style="color:#64748b">Temp:</span> <span style="font-weight:600">${temp}\u00b0C</span></div>
-              <div><span style="color:#64748b">Heat Idx:</span> <span style="font-weight:600">${a?.heat_index?.toFixed(1) || "\u2014"}</span></div>
-              <div><span style="color:#64748b">Exceed:</span> <span style="font-weight:600">${a?.exceedance_hours?.toFixed(1) || "\u2014"}h</span></div>
+              <div><span style="color:#64748b">Temp:</span> <span style="font-weight:600">${temp}°C</span></div>
+              <div><span style="color:#64748b">Heat Idx:</span> <span style="font-weight:600">${a?.heat_index?.toFixed(1) || "—"}</span></div>
+              <div><span style="color:#64748b">Exceed:</span> <span style="font-weight:600">${a?.exceedance_hours?.toFixed(1) || "—"}h</span></div>
             </div>
           </div>`
         );

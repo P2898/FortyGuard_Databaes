@@ -8,6 +8,28 @@ export function getRiskColor(risk: string): string {
   }
 }
 
+// Temperature conversion utilities
+export function celsiusToFahrenheit(celsius: number): number {
+  return (celsius * 9/5) + 32;
+}
+
+export function formatTemperature(celsius: number, showBoth: boolean = true): string {
+  const fahrenheit = celsiusToFahrenheit(celsius);
+  if (showBoth) {
+    return `${celsius.toFixed(1)}°C / ${fahrenheit.toFixed(0)}°F`;
+  }
+  return `${celsius.toFixed(1)}°C`;
+}
+
+// Temperature thresholds for color coding
+export function getTempColor(tempC: number): string {
+  if (tempC < 22) return "#22c55e"; // Cool - green
+  if (tempC < 27) return "#84cc16"; // Mild - lime
+  if (tempC < 32) return "#eab308"; // Warm - yellow
+  if (tempC < 37) return "#f97316"; // Hot - orange
+  return "#ef4444"; // Extreme - red
+}
+
 export function getRiskBg(risk: string, theme?: string): string {
   if (theme === "dark") {
     switch (risk) {

@@ -102,7 +102,9 @@ def _compute_site_temp(lat: float, lon: float, site_id: str = "") -> tuple[float
     plus a small hour-of-day variation to demonstrate FortyGuard's hyperlocal
     differentiator.
     """
-    random.seed(hash((lat, lon, datetime.now().hour)))
+    # Use deterministic seed based on site_id and hour for consistency
+    seed = hash((site_id or f"{lat}_{lon}", datetime.now().hour))
+    random.seed(seed)
 
     # Look up the NOAA baseline for this site
     if site_id and site_id in _SITE_REF_TEMPS:

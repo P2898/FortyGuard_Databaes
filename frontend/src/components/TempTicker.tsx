@@ -1,5 +1,6 @@
 import { useTheme } from "../lib/theme";
 import { Site, Assessment } from "../lib/api";
+import { formatTemperature } from "./helpers";
 
 const RISK_COLORS: Record<string, string> = {
   CRITICAL: "#ef4444",
@@ -100,7 +101,7 @@ export default function TempTicker({ sites, assessments }: Props) {
               {item.name}
             </span>
             <span style={{ color: RISK_COLORS[item.risk], fontWeight: 600 }}>
-              {item.temp.toFixed(1)}°C
+              {formatTemperature(item.temp, false)}
             </span>
             <span style={{ color: colors.textMuted }}>
               / {((item.temp * 9) / 5 + 32).toFixed(0)}°F

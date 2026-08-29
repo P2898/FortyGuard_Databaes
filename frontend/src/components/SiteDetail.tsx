@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import * as api from "../lib/api";
-import { getRiskColor, getRiskBg } from "./helpers";
+import { getRiskColor, getRiskBg, formatTemperature } from "./helpers";
 import { useTheme } from "../lib/theme";
 
 function TrendChart({ temps, colors }: { temps: number[]; colors: any }) {
@@ -40,8 +40,8 @@ export default function SiteDetail({ siteId, onBack }: { siteId: string; onBack:
   const { site, hourly_temps, risk, env_params } = detail;
 
   const statRows: [string, string][] = [
-    ["Temperature", risk.temperature_c + String.fromCharCode(176) + "C / " + ((risk.temperature_c * 9/5) + 32).toFixed(0) + String.fromCharCode(176) + "F"],
-    ["Heat Index", risk.heat_index + String.fromCharCode(176) + "C / " + ((risk.heat_index * 9/5) + 32).toFixed(0) + String.fromCharCode(176) + "F"],
+    ["Temperature", formatTemperature(risk.temperature_c)],
+    ["Heat Index", formatTemperature(risk.heat_index)],
     ["Risk", risk.risk_bucket],
     ["Exceedance", risk.exceedance_hours + "h"],
     ["Persistence", risk.persistence_hours + "h"],

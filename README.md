@@ -123,6 +123,60 @@ This matters. Shade is a safety-critical system — every number must be traceab
 
 ---
 
+## How Values Are Calculated
+
+Every number in Shade has a clear calculation path and source. Here's how each key metric is derived:
+
+### Temperature Data
+- **Source:** FortyGuard API (`POST /v1/heatmap` for grid data, `POST /v1/env_params` for point data)
+- **Resolution:** 20m grid cells (vs. 11km for weather stations)
+- **Height:** 2m (human breathing zone)
+- **Fallback:** NOAA Climate Data Online summer averages when API unavailable
+- **Calculation:** Direct API response — no estimation, no interpolation between stations
+
+### Heat Index
+- **Formula:** Simplified Rothfusz regression (NWS standard)
+- **Inputs:** Temperature (°F) + Relative Humidity (%)
+- **Source:** [NWS Heat Index Chart](https://www.weather.gov/ama/heatindex)
+- **Example:** 95°F + 40% RH = 107°F heat index
+
+### Risk Classification
+- **Thresholds:** NWS Heat Index bands (never invented)
+- **Bands:**
+  - LOW: < 80°F (Below NWS Caution)
+  - MEDIUM: 80–90°F (NWS Caution)
+  - HIGH: 90–103°F (NWS Extreme Caution)
+  - CRITICAL: 103–124°F (NWS Danger)
+  - EXTREME: 125°F+ (NWS Extreme Danger)
+- **Exceedance hours:** Count of hours above threshold in 12-hour window
+- **Persistence hours:** Longest continuous streak above threshold
+
+### Heat P&L (Financial Impact)
+- **Hazard pay owed:** Company rate ($/hr) × hours in HIGH/CRITICAL zones
+- **Productivity preserved:** SF Fed/Duke research × hours avoided × wage rate
+- **Delay claim evidence:** Exceedance days × contract day-rate
+- **Compliance readiness:** Status only — never priced as avoided fine
+- **Every formula is expandable** in the UI to show inputs and source citations
+
+### Forecast Confidence
+- **Lead-time based:** High ≥85%, Moderate ≥70%, Lower <70%
+- **Self-measured:** Shade tracks its own prediction accuracy over time
+- **Source:** FortyGuard 12h forecast data
+
+### Heat Illness Probability
+- **Model:** Probabilistic with 9 worker profile factors
+- **Factors:** Age, acclimatization, fitness, hydration, clothing, medical conditions, workload, duration, time of day
+- **Sources:** OSHA, NIOSH, ACGIH thresholds
+- **Output:** 0–99% probability with risk level and recommendations
+
+### Route Temperature Delta
+- **Data:** FortyGuard grid interpolated onto route segments
+- **Calculation:** Average temperature along fastest vs. coolest route
+- **Color coding:** Green (<22°C) → Yellow (27°C) → Red (>37°C)
+- **Source:** FortyGuard 20m resolution data
+
+---
+
 ## FortyGuard API Integration
 
 Shade uses three FortyGuard endpoints:

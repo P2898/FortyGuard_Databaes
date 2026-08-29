@@ -12,6 +12,7 @@ import {
   DollarsFlagged,
   SiteDetail,
 } from "../lib/api";
+import { formatTemperature, getTempColor } from "./helpers";
 
 const RISK_COLORS: Record<string, string> = {
   LOW: "#22c55e",
@@ -104,7 +105,7 @@ function TimelineBar({ checkpoints, compact = false }: { checkpoints: ForecastCh
                 borderRadius: "3px 3px 0 0",
                 transition: "height 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
               }}
-              title={`${cp.nws_band}: ${cp.heat_index_c.toFixed(1)}°C / ${((cp.heat_index_c * 9) / 5 + 32).toFixed(0)}°F`}
+              title={`${cp.nws_band}: ${formatTemperature(cp.heat_index_c)}`}
             />
             <span style={{ fontSize: 10, color: colors.textSecondary }}>+{cp.hours_from_now}h</span>
           </div>
@@ -268,8 +269,7 @@ function SiteHubCard({
       >
         <div style={{ padding: "0 20px 20px", borderTop: `1px solid ${colors.borderLight}` }}>
           {/* Peak Stats */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginTop: 16 }}>
-            <StatBlock label="Peak Heat Index" value={`${site.peak_heat_index_c.toFixed(1)}°C / ${((site.peak_heat_index_c * 9) / 5 + 32).toFixed(0)}°F`} color={peakColor} />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginTop: 16 }}>              <StatBlock label="Peak Heat Index" value={formatTemperature(site.peak_heat_index_c)} color={peakColor} />
             <StatBlock label="Hours above 80°F" value={String(site.hours_above_osha)} color={colors.text} />
             <StatBlock
               label="Hours above 103°F"
