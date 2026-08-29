@@ -28,6 +28,8 @@ Existing weather-safety tools use coarse weather-station data (~11km grid). They
 | *"What did heat cost us today?"* | **Heat P&L**: every dollar traceable to real exposure data |
 | *"What's the coolest route from A to B?"* | Blue-to-red gradient polyline on real streets |
 | *"Generate my OSHA report"* | Formal "Shade Heat Exposure Record — Form SG-1" PDF/CSV |
+| *"Is it safe to work outdoors?"* | **Heat Illness Prediction Model** with human-friendly advice |
+| *"Plan a route from Oakland to Tracy"* | Detects locations → navigates to Route Planner automatically |
 | *"What should I do?"* | **Kelvin AI** answers instantly with voice or text |
 
 ---
@@ -303,6 +305,7 @@ FortyGuard_Databaes/
 
 | Document | Contents |
 |---|---|
+| [PROJECT_DETAILS.md](docs/PROJECT_DETAILS.md) | **Full project documentation** — tech stack, architecture, all 11 features, API endpoints, innovation highlights, deployment, roadmap |
 | [API_REFERENCE.md](docs/API_REFERENCE.md) | All API endpoints with request/response examples |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design, data flow diagrams, Supabase schema |
 | [DEPLOYMENT.md](docs/DEPLOYMENT.md) | Step-by-step Vercel + Render + Supabase deployment |
