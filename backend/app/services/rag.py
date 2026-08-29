@@ -234,7 +234,9 @@ def generate_response(query: str, context_docs: List[Dict], site_data: Dict | No
     if site_mentioned and intent not in ("financial", "route_advice", "route_plan", "heat_illness_prevention"):
         intent = "risk_assessment"
 
-    if intent == "route_plan":
+    if intent == "greeting":
+        response = _generate_greeting_response(query, context_docs, site_data)
+    elif intent == "route_plan":
         response = _generate_route_plan_response(query, context_docs, site_data)
     elif intent == "heat_illness_prevention":
         response = _generate_heat_illness_prevention_response(query, context_docs, site_data)
@@ -298,6 +300,11 @@ def _classify_intent(query: str) -> str:
         return "health"
     if any(w in query for w in ["temperature", "threshold", "degree", "celsius", "fahrenheit", "how hot", "how warm"]):
         return "threshold"
+    # Greetings and small talk
+    if any(w in query for w in ["hello", "hi", "hey", "how are you", "good morning", "good afternoon",
+                                  "good evening", "what's up", "who are you", "what can you do",
+                                  "help", "thanks", "thank you", "bye", "goodbye"]):
+        return "greeting"
     return "general"
 
 
@@ -464,6 +471,75 @@ def _generate_threshold_response(query: str, context: List[Dict], site_data: Dic
     return {"answer": answer, "confidence": 0.91, "suggestions": ["View site temperatures on Dashboard", "Set up alerts for critical thresholds"]}
 
 
+def _generate_greeting_response(query: str, context: List[Dict], site_data: Dict | None) -> Dict:
+    query_lower = query.lower()
+
+    if any(w in query_lower for w in ["hi", "hello", "hey", "good morning", "good afternoon", "good evening"]):
+        answer = (
+            "Hey there! I'm **Kelvin**, your heat safety assistant.\n\n"
+            "I can help you with:"
+        )
+        suggestions = [
+            "Check site temperatures on Dashboard",
+            "Ask 'Is it safe to work outdoors?'",
+            "Plan a route between sites",
+            "View the Heat P&L cost breakdown",
+        ]
+    elif any(w in query_lower for w in ["how are you", "what's up"]):
+        answer = (
+            "I'm doing great, thanks for asking! I'm here to help keep your workers safe from heat.\n\n"
+            "Right now I'm monitoring your Bay Area sites. Want me to check the current conditions?"
+        )
+        suggestions = [
+            "Check fleet risk status",
+            "Is it safe to work outdoors?",
+            "View Heat P&L",
+        ]
+    elif any(w in query_lower for w in ["who are you", "what can you do"]):
+        answer = (
+            "I'm **Kelvin**, your AI heat safety assistant. I'm powered by OSHA, NIOSH, and FortyGuard's 20m-resolution temperature data.\n\n"
+            "I can help with:"
+        )
+        suggestions = [
+            "Check site temperatures",
+            "Is it safe to work outdoors?",
+            "Plan heat-safe routes",
+            "View financial impact",
+        ]
+    elif any(w in query_lower for w in ["thank", "thanks"]):
+        answer = (
+            "You're welcome! Stay safe out there. Remember — **Water, Rest, Shade** are the three key words for heat safety.\n\n"
+            "If conditions change, just ask me again."
+        )
+        suggestions = []
+    elif any(w in query_lower for w in ["bye", "goodbye"]):
+        answer = "Goodbye! Stay cool and stay safe. I'm always here when you need me."
+        suggestions = []
+    else:
+        answer = (
+            "Hey! I'm Kelvin, your heat safety assistant.\n\n"
+            "I'm here to help with heat safety, OSHA compliance, route planning, and financial impact analysis.\n"
+            "What would you like to know?"
+        )
+        suggestions = [
+            "Check fleet risk status",
+            "Is it safe to work outdoors?",
+            "View Heat P&L",
+        ]
+
+    answer += (
+        "\n\n**Here's what I can do:**\n"
+        "- **Heat risk** — Check site safety and risk levels\n"
+        "- **Outdoor safety** — Is it safe to work outside?\n"
+        "- **Routes** — Find the coolest path between sites\n"
+        "- **Costs** — See the financial impact of heat\n"
+        "- **Compliance** — OSHA regulations and requirements\n"
+        "- **Health** — Heat illness prevention and symptoms"
+    )
+
+    return {"answer": answer, "confidence": 1.0, "suggestions": suggestions}
+
+
 def _generate_general_response(query: str, context: List[Dict], site_data: Dict | None) -> Dict:
     answer = "💡 **Here's what I found:**\n\n"
     for ctx in context[:3]:
@@ -471,8 +547,18 @@ def _generate_general_response(query: str, context: List[Dict], site_data: Dict 
         score = ctx["relevance_score"]
         answer += f"**{doc['title']}** (relevance: {score:.0%}):\n{doc['content'].strip()}\n\n"
     if not context:
-        answer += "I couldn't find specific information about that topic.\nTry asking about: heat risk, OSHA regulations, costs, routes, compliance, or health effects."
-    return {"answer": answer, "confidence": context[0]["relevance_score"] if context else 0.3, "suggestions": ["Ask about heat risk assessment", "Learn about OSHA compliance", "Explore heat cost analysis"]}
+        answer = (
+            f"I'm not sure I understand **'{query.strip()}'** — but I can help with heat safety!\n\n"
+            "**Try asking about:**\n"
+            "- Site safety — 'Is Tracy safe?' or 'Which site is hottest?'\n"
+            "- Outdoor safety — 'Is it safe to work outdoors?'\n"
+            "- Costs — 'How much does heat cost us?'\n"
+            "- Routes — 'Plan a route from Oakland to Tracy'\n"
+            "- Compliance — 'What are OSHA heat regulations?'\n"
+            "- Health — 'What are heat stroke symptoms?'\n"
+            "- Temperature — 'How hot is it at Livermore?'\n"
+        )
+    return {"answer": answer, "confidence": context[0]["relevance_score"] if context else 0.5, "suggestions": ["Check site temperatures", "Is it safe to work outdoors?", "View Heat P&L"]}
 
 
 def _generate_route_plan_response(query: str, context: List[Dict], site_data: Dict | None) -> Dict:
