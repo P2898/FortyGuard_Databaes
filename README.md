@@ -6,14 +6,14 @@
 [![GitHub](https://img.shields.io/badge/Source_Code-GitHub-181717?style=for-the-badge&logo=github)](https://github.com/P2898/FortyGuard_Databaes)
 [![FortyGuard](https://img.shields.io/badge/FortyGuard-Hackathon_2026-0891B2?style=for-the-badge)](https://fortyguard.com)
 
-**🌐 Live App → [https://frontend-ten-pied-ucmtf13d1v.vercel.app](https://frontend-ten-pied-ucmtf13d1v.vercel.app)**
+**Live App → [https://frontend-ten-pied-ucmtf13d1v.vercel.app](https://frontend-ten-pied-ucmtf13d1v.vercel.app)**
 No login required · Works in any modern browser · Demo data included
 
 ---
 
 ## The Problem
 
-A safety manager at a logistics company with 8 Bay Area warehouses opens Perry Weather. It says "92°F in Tracy." She cancels outdoor shifts at all three inland sites. The SF waterfront warehouse — fog-cooled to 66°F — loses a full day of dock loading for nothing. **She just paid $4,200 in unnecessary downtime because the tool couldn't tell 66°F from 92°F.**
+A safety manager at a logistics company with 8 Bay Area warehouses opens her weather tool. It says "92°F in Tracy." She cancels outdoor shifts at all three inland sites. The SF waterfront warehouse — fog-cooled to 66°F — loses a full day of dock loading for nothing. **She just paid $4,200 in unnecessary downtime because the tool couldn't tell 66°F from 92°F.**
 
 That's the core problem: **existing weather tools use ~11km grid data. They give you a city average, not a site temperature.** On the same August afternoon:
 
@@ -22,13 +22,13 @@ That's the core problem: **existing weather tools use ~11km grid data. They give
 | SF Waterfront Warehouse | **66°F** (fog-cooled) | "92°F in SF" | **26°F wrong** |
 | Tracy Logistics Hub | **111°F** (inland) | "92°F in Tracy" | **19°F wrong** |
 
-A 26°F error isn't a rounding issue. It's the difference between "send your crew" and "halt all work." And it costs companies real money — **$100B/year** in heat-related productivity loss across the US (Atlantic Council), with OSHA actively issuing six-figure fines ($182,000 cited at a single Safeway warehouse in Tracy, CA in January 2025).
+A 26°F error isn't a rounding issue. It's the difference between "send your crew" and "halt all work." And it costs companies real money — **$100B/year** in heat-related productivity loss across the US (Atlantic Council), with OSHA actively issuing six-figure fines. In January 2025, Cal/OSHA cited a single Safeway warehouse in Tracy, CA **$182,000 for 27 heat violations.**
 
 ---
 
 ## How It Works
 
-Shade is a five-step system that turns raw temperature data into safety decisions:
+Shade is a five-step pipeline that turns raw temperature data into safety decisions:
 
 ### Step 1: Ingest Your Sites
 
@@ -38,24 +38,16 @@ Upload a CSV of your worksites — name, latitude, longitude. Shade loads them i
 
 For each site, Shade calls **FortyGuard's API** — a 20-meter resolution thermal grid (not 11km weather stations). This is the differentiator: FortyGuard resolves the microclimate at the exact coordinates of your loading dock, not the nearest airport.
 
-**The API call:**
-```http
-POST https://api.fortyguard.com/v1/env_params
-Body: { "latitude": 37.7397, "longitude": -121.4252 }
-```
-
-**What comes back:** temperature at 2m human height, heat index, humidity, solar irradiance, AQI — all at 20m resolution.
-
 ### Step 3: Classify Risk Using Sourced Thresholds
 
 Every temperature is classified against **NIOSH/OSHA regulatory thresholds** — not invented numbers:
 
 | Risk Level | Threshold | Source | Action |
 |---|---|---|---|
-| 🟢 LOW | < 80°F | NWS Below Caution | Normal operations |
-| 🟡 MEDIUM | 80–90°F | NWS Caution | Water stations, rest breaks |
-| 🟠 HIGH | 90–103°F | NWS Extreme Caution | Limit outdoor exposure 12–3 PM |
-| 🔴 CRITICAL | 103–124°F | NWS Danger | Halt non-essential outdoor work |
+| LOW | < 80°F | NWS Below Caution | Normal operations |
+| MEDIUM | 80–90°F | NWS Caution | Water stations, rest breaks |
+| HIGH | 90–103°F | NWS Extreme Caution | Limit outdoor exposure 12–3 PM |
+| CRITICAL | 103–124°F | NWS Danger | Halt non-essential outdoor work |
 
 ### Step 4: Quantify the Financial Impact
 
@@ -110,98 +102,28 @@ Same manager, same 8 sites, same day:
 
 ---
 
-## ✨ Features
+## What's Real vs. Estimated
 
-| Feature | What It Does |
-|---|---|
-| **Fleet Risk Dashboard** | Ranked table of all worksites classified LOW → CRITICAL. Interactive map with heat-colored markers. |
-| **Heat P&L** | Financial impact ledger: hazard pay, productivity preserved, delay claim evidence — every number traceable. |
-| **Route Planner** | Fastest vs. coolest route between sites. Heat-gradient polyline on real streets. |
-| **Kelvin AI** | Voice or text assistant. Ask *"Is Tracy safe?"* — sourced, deterministic, never an LLM making up numbers. |
-| **Heat Illness Prediction** | Probabilistic model (0–99%) with worker profile factors (age, fitness, hydration, workload). |
-| **Compliance Reports** | One-click OSHA-ready PDF/CSV with sourced thresholds and exposure logs. |
-| **Pegman Inspector** | Drop a pin anywhere on the map — get temperature, heat index, humidity, solar irradiance at that exact point. |
-| **12-Hour Forecast** | Multi-checkpoint timeline with confidence labels and "Cost of Inaction" calculator. |
+This matters. Shade is a safety-critical system — every number must be traceable to its source. Here's what's real and what's modeled:
 
----
-
-## 🏗️ Tech Stack
-
-| Layer | Technology | Why |
+| Data Point | Source | Status |
 |---|---|---|
-| **Frontend** | React 19, TypeScript, Tailwind CSS 4 | Fast iteration, type safety |
-| **Maps** | Leaflet.js + OpenStreetMap | Free, no API key, interactive |
-| **Routing** | OSMnx + NetworkX | Street graph routing with heat-weighted edges |
-| **Backend** | Python FastAPI, httpx | Async API, fast responses |
-| **Database** | Supabase (PostgreSQL) | Persistent storage, in-memory fallback |
-| **Data Source** | FortyGuard Temperature API | 20m hyperlocal resolution — the differentiator |
-| **Deployment** | Vercel (frontend) + Render (backend) | Zero-config production deploy |
+| Site temperatures | FortyGuard 20m grid (live) or NOAA-referenced estimation (demo) | **Real** |
+| Risk thresholds | NIOSH WBGT REL (28°C), OSHA triggers (80°F/90°F), CA Indoor (82°F) | **Sourced** |
+| Heat index | Simplified Rothfusz regression from temp + humidity | **Computed** |
+| Route temperatures | FortyGuard grid interpolated onto route segments | **Real** |
+| Hazard pay owed | Company-entered rate × real hours in HIGH/CRITICAL | **Real** |
+| Productivity $ preserved | SF Fed/Duke relationship × hours avoided × wage rate | **Estimated** |
+| Delay claim value | Exceedance days × company day-rate | **Evidence value** |
+| Compliance readiness | Status only — never priced as avoided fine | **Real** |
+| Heat illness probability | Probabilistic model with 9 worker profile factors | **Modeled** |
+| Forecast confidence | Lead-time based (High ≥85%, Moderate ≥70%, Lower <70%) | **Modeled** |
+
+**What we never fabricate:** market-size figures, health-outcome claims, death-prevention claims, or regulatory compliance guarantees. Every dollar figure in the Heat P&L is expandable to show its exact formula, inputs, and source citation.
 
 ---
 
-## 🚀 Quick Start
-
-### Requirements
-- Node.js 18+
-- Python 3.10+
-- npm or pnpm
-
-### 1. Clone and install
-
-```bash
-git clone https://github.com/P2898/FortyGuard_Databaes.git
-cd FortyGuard_Databaes
-
-# Frontend
-cd frontend && npm install && cd ..
-
-# Backend
-cd backend && pip install -r requirements.txt && cd ..
-```
-
-### 2. Configure environment
-
-```bash
-cp .env.example .env
-# Edit .env and set your FortyGuard API key:
-# FORTYGUARD_API_KEY=your_key_here
-```
-
-### 3. Run
-
-**Terminal 1 — Backend:**
-```bash
-cd backend
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-**Terminal 2 — Frontend:**
-```bash
-cd frontend
-npm run dev
-```
-
-Open **http://localhost:5173** — no login required.
-
----
-
-## 🛡️ Safety-Critical Design
-
-Shade is a system advising on **worker heat exposure**. Every design decision reflects that responsibility:
-
-1. **Kelvin is deterministic, never an LLM.** Regex-based intent matcher. Never invents numbers. Only phrases pre-computed results from the same backend functions the dashboard uses.
-
-2. **All thresholds are sourced.** Every risk classification cites NIOSH or OSHA. No invented thresholds.
-
-3. **Every dollar figure is traceable.** Heat P&L numbers come from: real FortyGuard data, user-entered company rates, or cited external research. Expandable formulas.
-
-4. **No fabricated statistics.** What's real vs. estimated is clearly labeled. No "deaths prevented" claims.
-
-5. **Graceful failure.** API failures fall back to demo data. Missing Supabase falls back to in-memory.
-
----
-
-## 📊 FortyGuard API Integration
+## FortyGuard API Integration
 
 Shade uses three FortyGuard endpoints:
 
@@ -211,10 +133,15 @@ Shade uses three FortyGuard endpoints:
 | `POST /v1/env_params` | Per-site environmental parameters (temp, humidity, solar, AQI) |
 | `POST /v1/system/fetch-api-key-usage` | Plan tier verification |
 
-**Request example:**
+### Real API Example: Assessing Tracy Logistics Hub
+
+**Request:**
 ```http
 POST https://api.fortyguard.com/v1/env_params
-Headers: { "api-key": "YOUR_API_KEY", "Content-Type": "application/json" }
+Headers: {
+  "api-key": "YOUR_API_KEY",
+  "Content-Type": "application/json"
+}
 Body: {
   "latitude": 37.7397,
   "longitude": -121.4252,
@@ -231,6 +158,8 @@ Body: {
 ```json
 {
   "data": {
+    "activity_id": "abc123...",
+    "status": "succeeded",
     "result": {
       "heat_index_celsius": 42.3,
       "relative_humidity_percent": 28.5,
@@ -241,9 +170,132 @@ Body: {
 }
 ```
 
+Shade then runs this through its risk classifier:
+
+```
+Temperature: 39°C (102°F) → Heat Index: 42.3°C (108°F)
+Threshold: NWS Danger (39.4°C / 103°F)
+Risk Bucket: CRITICAL
+Exceedance Hours: 12h
+Recommendation: "Halt non-essential outdoor work between 10 AM and 4 PM"
+```
+
 ---
 
-## 📁 Project Structure
+## Features
+
+| Feature | What It Does |
+|---|---|
+| **Fleet Risk Dashboard** | Ranked table of all worksites classified LOW → CRITICAL. Interactive map with heat-colored markers. |
+| **Heat P&L** | Financial impact ledger: hazard pay, productivity preserved, delay claim evidence — every number traceable. |
+| **Route Planner** | Fastest vs. coolest route between sites. Heat-gradient polyline on real streets. |
+| **Kelvin AI** | Voice or text assistant. Ask *"Is Tracy safe?"* — sourced, deterministic, never an LLM making up numbers. |
+| **Heat Illness Prediction** | Probabilistic model (0–99%) with worker profile factors (age, fitness, hydration, workload). |
+| **Compliance Reports** | One-click OSHA-ready PDF/CSV with sourced thresholds and exposure logs. |
+| **Pegman Inspector** | Drop a pin anywhere on the map — get temperature, heat index, humidity, solar irradiance at that exact point. |
+| **12-Hour Forecast** | Multi-checkpoint timeline with confidence labels and "Cost of Inaction" calculator. |
+
+---
+
+## Tech Stack
+
+| Layer | Technology | Why |
+|---|---|---|
+| **Frontend** | React 19, TypeScript, Tailwind CSS 4 | Fast iteration, type safety |
+| **Maps** | Leaflet.js + OpenStreetMap | Free, no API key, interactive |
+| **Routing** | OSMnx + NetworkX | Street graph routing with heat-weighted edges |
+| **Backend** | Python FastAPI, httpx | Async API, fast responses |
+| **Database** | Supabase (PostgreSQL) | Persistent storage, in-memory fallback |
+| **Data Source** | FortyGuard Temperature API | 20m hyperlocal resolution — the differentiator |
+| **Deployment** | Vercel (frontend) + Render (backend) | Zero-config production deploy |
+
+---
+
+## Run Locally
+
+### Requirements
+
+- Node.js 18+
+- Python 3.10+
+- npm or pnpm
+
+### 1. Clone and install
+
+```bash
+git clone https://github.com/P2898/FortyGuard_Databaes.git
+cd FortyGuard_Databaes
+
+# Install frontend dependencies
+cd frontend && npm install && cd ..
+
+# Install backend dependencies
+cd backend && pip install -r requirements.txt && cd ..
+```
+
+### 2. Configure environment
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and set your FortyGuard API key:
+
+```
+FORTYGUARD_API_KEY=your_key_here
+```
+
+Supabase is optional — the app works without it using an in-memory fallback with seeded demo data.
+
+### 3. Start the backend
+
+```bash
+cd backend
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+The API is now running at `http://localhost:8000`. You can verify with:
+
+```bash
+curl http://localhost:8000/api/health
+```
+
+### 4. Start the frontend
+
+In a second terminal:
+
+```bash
+cd frontend
+npm run dev
+```
+
+Open **http://localhost:5173** in your browser. No login required.
+
+### 5. Verify it works
+
+The dashboard loads 8 pre-seeded Bay Area sites. You should see:
+- A ranked risk table with sites sorted CRITICAL → LOW
+- An interactive map with heat-colored markers
+- A temperature ticker scrolling at the bottom
+
+---
+
+## Safety-Critical Design
+
+Shade is a system advising on **worker heat exposure**. Every design decision reflects that responsibility:
+
+1. **Kelvin is deterministic, never an LLM.** Regex-based intent matcher. Never invents numbers. Only phrases pre-computed results from the same backend functions the dashboard uses.
+
+2. **All thresholds are sourced.** Every risk classification cites NIOSH or OSHA. No invented thresholds.
+
+3. **Every dollar figure is traceable.** Heat P&L numbers come from: real FortyGuard data, user-entered company rates, or cited external research. Expandable formulas.
+
+4. **No fabricated statistics.** What's real vs. estimated is clearly labeled above. No "deaths prevented" claims.
+
+5. **Graceful failure.** API failures fall back to demo data. Missing Supabase falls back to in-memory.
+
+---
+
+## Project Structure
 
 ```
 FortyGuard_Databaes/
@@ -289,17 +341,17 @@ FortyGuard_Databaes/
 
 ---
 
-## 🏆 Hackathon Submission
+## Hackathon Submission
 
 **Track:** Primary — Track 3 (Industrial & Enterprise) · Secondary — Track 4 (Government & Environment)
 
-- ✅ Live demo: [https://frontend-ten-pied-ucmtf13d1v.vercel.app](https://frontend-ten-pied-ucmtf13d1v.vercel.app)
-- ✅ Public GitHub repo with README, run instructions, API examples
-- 🎬 Demo video (3 min max)
-- 📝 [SUBMISSION_SUMMARY.md](SUBMISSION_SUMMARY.md)
+- Live demo: [https://frontend-ten-pied-ucmtf13d1v.vercel.app](https://frontend-ten-pied-ucmtf13d1v.vercel.app)
+- Public GitHub repo with README, run instructions, API examples
+- Demo video (3 min max)
+- [SUBMISSION_SUMMARY.md](SUBMISSION_SUMMARY.md)
 
 ---
 
-## 📄 License
+## License
 
 Built for the FortyGuard Hackathon 2026. Add project license terms before distributing outside the intended team.
