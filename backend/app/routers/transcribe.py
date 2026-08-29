@@ -98,11 +98,11 @@ async def transcribe_audio(audio: UploadFile = File(...)):
 
         if not _whisper_available:
             return {"text": "", "method": "unavailable",
-                    "message": "Install Whisper: `pip install openai-whisper`"}
+                    "message": "Voice transcription is not available on this server. Please type your message instead."}
 
         if not _ffmpeg_available:
             return {"text": "", "method": "unavailable",
-                    "message": "Install ffmpeg wrapper: `pip install imageio-ffmpeg`"}
+                    "message": "Voice transcription requires audio processing support. Please type your message instead."}
 
         # Determine input format for ffmpeg
         fmt_map = {

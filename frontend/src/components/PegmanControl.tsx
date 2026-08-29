@@ -51,6 +51,19 @@ const PEGMAN_MARKER_SVG = `
   <path d="M21 19.5 Q19 23 16 21.5" stroke="#D97706" stroke-width="2" stroke-linecap="round" fill="none"/>
 </svg>`;
 
+/** Get the PEGMAN_SVG with user's saved avatar colors applied. */
+export function getUserPegmanSvg(width = 28, height = 44): string {
+  const outfit = localStorage.getItem("shade_avatar_outfit") || "default";
+  const bodyColor = outfit === "construction" ? "#F59E0B" : outfit === "delivery" ? "#3B82F6" : "#F2994A";
+  const accentColor = outfit === "construction" ? "#92400E" : outfit === "delivery" ? "#1E3A8A" : "#D97706";
+  const helmetColor = outfit === "construction" ? "#FCD34D" : outfit === "delivery" ? "#60A5FA" : "#FEF3C7";
+  return PEGMAN_SVG
+    .replace(/width="28" height="44"/, `width="${width}" height="${height}"`)
+    .replace(/#F2994A/g, bodyColor)
+    .replace(/#D97706/g, accentColor)
+    .replace(/#FDE68A/g, helmetColor);
+}
+
 function tempColor(tempC: number): string {
   if (tempC < 22) return "#22c55e";
   if (tempC < 27) return "#84cc16";
@@ -109,7 +122,7 @@ function buildPopupHTML(
     return `
       <div style="min-width:290px;font-family:system-ui,-apple-system,sans-serif;padding:4px">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #e2e8f0">
-          ${PEGMAN_SVG.replace(/width="28" height="44"/, 'width="20" height="30"')}
+          ${getUserPegmanSvg(20, 30)}
           <div>
             <div style="font-size:13px;font-weight:700;color:#1a1a2e">Street View Inspector</div>
             <div style="font-size:11px;color:#6b7280">${lat.toFixed(5)}, ${lng.toFixed(5)}</div>
@@ -129,7 +142,7 @@ function buildPopupHTML(
     <div style="min-width:290px;font-family:system-ui,-apple-system,sans-serif;padding:4px">
       <!-- Header -->
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #e2e8f0">
-        ${PEGMAN_SVG.replace(/width="28" height="44"/, 'width="22" height="32"')}
+        ${getUserPegmanSvg(22, 32)}
         <div style="flex:1">
           <div style="font-size:13px;font-weight:700;color:#1a1a2e">Street View Inspector</div>
           <div style="font-size:11px;color:#6b7280">${lat.toFixed(5)}, ${lng.toFixed(5)}</div>
@@ -241,7 +254,7 @@ export function addPegmanToMap(map: L.Map): (() => void) | void {
     onAdd: function () {
       const container = L.DomUtil.create("div", "leaflet-pegman-control");
       container.style.cssText = "cursor:pointer;border-radius:6px;padding:2px;transition:background 0.15s;";
-      container.innerHTML = `<div class="pegman-icon" draggable="true" title="Click map to inspect · Or drag pegman onto map">${PEGMAN_SVG}</div>`;
+      container.innerHTML = `<div class="pegman-icon" draggable="true" title="Click map to inspect · Or drag pegman onto map">${getUserPegmanSvg()}</div>`;
 
       const pegmanEl = container.querySelector(".pegman-icon") as HTMLElement;
 
@@ -252,7 +265,7 @@ export function addPegmanToMap(map: L.Map): (() => void) | void {
         e.dataTransfer!.effectAllowed = "copy";
         // Show pegman as ghost
         const ghost = document.createElement("div");
-        ghost.innerHTML = PEGMAN_SVG;
+        ghost.innerHTML = getUserPegmanSvg();
         ghost.style.cssText = "opacity:0.8;position:absolute;top:-9999px;";
         document.body.appendChild(ghost);
         e.dataTransfer!.setDragImage(ghost, 14, 40);

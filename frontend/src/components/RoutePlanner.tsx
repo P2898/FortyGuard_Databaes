@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import L from "leaflet";
 import { planRoute, getRouteSites, RouteSite, RouteResult } from "../lib/api";
-import { PEGMAN_SVG as PEGMAN_BASE } from "./PegmanControl";
+import { getUserPegmanSvg } from "./PegmanControl";
 import { addPegmanToMap } from "./PegmanControl";
 import { useTheme } from "../lib/theme";
 
@@ -35,9 +35,7 @@ export default function RoutePlanner({ initialOriginId, initialDestId, onRoutePl
   const mapInstance = useRef<L.Map | null>(null);
   const layersRef = useRef<L.Layer[]>([]);
 
-  // Read avatar settings from localStorage (set in Settings screen)
-  const avatarGender = localStorage.getItem("shade_avatar_gender") || "default";
-  const avatarOutfit = localStorage.getItem("shade_avatar_outfit") || "default";
+  // Avatar settings are read from localStorage by getUserPegmanSvg()
 
   const autoPlanDone = useRef(false);
   useEffect(() => {
@@ -196,15 +194,7 @@ export default function RoutePlanner({ initialOriginId, initialDestId, onRoutePl
     layersRef.current.push(startMarker, endMarker);
     if (initialOriginId) {
       // Use avatar settings from localStorage
-      const bodyColor = avatarOutfit === "construction" ? "#F59E0B" : avatarOutfit === "delivery" ? "#3B82F6" : "#F2994A";
-      const accentColor = avatarOutfit === "construction" ? "#92400E" : avatarOutfit === "delivery" ? "#1E3A8A" : "#D97706";
-      const helmetColor = avatarOutfit === "construction" ? "#FCD34D" : avatarOutfit === "delivery" ? "#60A5FA" : "#FEF3C7";
-      // Apply outfit colors to the full PEGMAN SVG (with eyes, mouth, etc.)
-      const PEGMAN_SVG = PEGMAN_BASE
-        .replace(/width="28" height="44"/, 'width="32" height="48"')
-        .replace(/#F2994A/g, bodyColor)
-        .replace(/#D97706/g, accentColor)
-        .replace(/#FDE68A/g, helmetColor);
+      const PEGMAN_SVG = getUserPegmanSvg(32, 48);
       const pegmanIcon = L.divIcon({
         className: "pegman-marker",
         html: PEGMAN_SVG,
