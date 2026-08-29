@@ -239,7 +239,7 @@ export default function HeatPLScreen() {
       >
         <strong style={{ color: colors.textSecondary }}>What's real vs. estimated:</strong>{" "}
         Hazard pay and delay claim values are computed from your company-entered rates and real FortyGuard risk data.
-        Productivity savings use the SF Fed/Duke research relationship (workers lose ~1hr/day above 85\u00b0F vs 76-80\u00b0F),
+        Productivity savings use the SF Fed/Duke research relationship (workers lose ~1hr/day above 85°F vs 76-80°F),
         labeled as an estimate. Compliance readiness tracks status only, not estimated fine avoidance.
       </div>
     </div>

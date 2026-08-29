@@ -19,7 +19,7 @@ function TrendChart({ temps, colors }: { temps: number[]; colors: any }) {
           </g>
         );
       })}
-      <text x={0} y={12} fontSize={9} fill={colors.textSecondary}>Temperature ({String.fromCharCode(176)}C)</text>
+      <text x={0} y={12} fontSize={9} fill={colors.textSecondary}>Temperature (°C)</text>
     </svg>
   );
 }
@@ -50,10 +50,10 @@ export default function SiteDetail({ siteId, onBack }: { siteId: string; onBack:
   return (
     <div>
       <button onClick={onBack} style={{ fontSize: 13, color: colors.accent, background: "none", border: "none", cursor: "pointer", marginBottom: 12 }}>
-        {String.fromCharCode(8592)} Back to Dashboard
+        ← Back to Dashboard
       </button>
       <h2 style={{ fontSize: 22, fontWeight: 700, color: colors.text }}>{site.name}</h2>
-      <p style={{ color: colors.textSecondary, marginTop: 2 }}>{site.site_type} {String.fromCharCode(183)} {site.site_id}</p>
+      <p style={{ color: colors.textSecondary, marginTop: 2 }}>{site.site_type} · {site.site_id}</p>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginTop: 16 }}>
         {statRows.map(([l, v]) => (
