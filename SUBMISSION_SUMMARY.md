@@ -15,3 +15,10 @@ Shade integrates three FortyGuard API endpoints. The Heatmap endpoint provides p
 ## Measured Result
 
 Across eight monitored Bay Area sites, Shade classifies 2 as CRITICAL (Tracy Logistics Hub, Livermore Solar Farm), 2 as HIGH, 2 as MEDIUM, and 2 as LOW using exact NWS Heat Index thresholds. The Heat P&L model computes approximately $20,500 in daily heat-related costs—comprising hazard pay, productivity loss, and schedule delay exposure—during active heat events. The predictive forecast engine identifies $15,500 in cost-of-inaction exposure and $700 in reschedule savings across the portfolio. The AI chatbot, powered by a custom TF-IDF retrieval pipeline over 10 OSHA/NIOSH knowledge documents, correctly answers risk, financial, compliance, health, and route queries with site-specific data drawn from FortyGuard readings. The heat illness prediction model, built on NIOSH Recommended Exposure Limits and validated against OSHA thresholds, produces probability scores and human-readable safety recommendations for individual worker profiles. All risk thresholds are sourced to official NWS, OSHA, NIOSH, and Cal/OSHA references—nothing is invented.
+
+---
+
+## Team — Databaes
+
+- **Bhavya Usha** — Full Stack Development, AI/ML Integration
+- **Gayatri Praneeta Samayamantri** — Full Stack Development, AI/ML Integration

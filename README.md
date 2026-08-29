@@ -357,9 +357,10 @@ Shade doesn't work without hyperlocal temperature data. A weather-station grid t
 
 ---
 
-## Team
+## Team — Databaes
 
 - **Bhavya Usha** — Full Stack Development, AI/ML Integration
+- **Gayatri Praneeta Samayamantri** — Full Stack Development, AI/ML Integration
 
 ---
 
