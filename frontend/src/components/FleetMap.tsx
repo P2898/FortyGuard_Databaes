@@ -187,7 +187,7 @@ export default function FleetMap({
           color: "#94a3b8",
         }}
       >
-        {sites.length} sites \u00b7 {assessments.length} assessments
+        {sites.length} sites · {assessments.length} assessments
       </div>
     </div>
   );

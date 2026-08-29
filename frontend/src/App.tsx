@@ -385,9 +385,9 @@ export default function App() {
               </span>
             )}
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div className="header-desktop" style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {assessments.length > 0 && (
-              <div style={{ display: "flex", gap: 6, marginRight: 8 }}>
+              <div className="header-desktop" style={{ display: "flex", gap: 6, marginRight: 8 }}>
                 {(["CRITICAL", "HIGH", "MEDIUM", "LOW"] as const).map((bucket) => {
                   const count = assessments.filter((a) => a.risk_bucket === bucket).length;
                   if (!count) return null;
@@ -410,7 +410,7 @@ export default function App() {
                 })}
               </div>
             )}
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div className="header-desktop" style={{ display: "flex", alignItems: "center", gap: 8 }}>
               {/* Auto-refresh selector */}
               <select
                 value={autoRefresh}
@@ -562,7 +562,7 @@ export default function App() {
                   color: view === v ? "#c07a28" : "#685f58",
                   fontSize: 9,
                   cursor: "pointer",
-                  padding: "4px 4px",
+                  padding: "6px 2px",
                   flex: "0 0 auto",
                 }}
               >

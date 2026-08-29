@@ -455,14 +455,14 @@ export default function KelvinPanel({ onNavigateRoute }: Props) {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", maxWidth: 900, margin: "0 auto" }}>
+    <div className="kelvin-container" style={{ display: "flex", flexDirection: "column", height: "100%", maxWidth: 900, margin: "0 auto" }}>
       {/* Header */}
       <div
         style={{
           padding: "16px 20px",
           borderBottom: `1px solid ${colors.border}`,
           background: colors.surface,
-          borderRadius: "12px 12px 0 0",
+          borderRadius: "12px 12px 0 0", flexWrap: "wrap", gap: 8,
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
@@ -753,7 +753,7 @@ export default function KelvinPanel({ onNavigateRoute }: Props) {
           background: colors.surface,
           display: "flex",
           gap: 8,
-          borderRadius: "0 0 12px 12px",
+          borderRadius: "0 0 12px 12px", flexWrap: "wrap",
         }}
       >
         <input

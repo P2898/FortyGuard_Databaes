@@ -142,7 +142,7 @@ async def assess_fleet(req: AssessRequest):
     """
     # Return cached result if fresh (unless specific sites requested)
     if not req.site_ids:
-        cached = cache_get("fleet_assessment")
+        cached = cache_get("fleet_assessment", ttl=60)
         if cached:
             return AssessmentResponse(**cached)
 

@@ -1,13 +1,29 @@
 """Supabase database client using direct REST API (no supabase-py dependency).
 
-Uses httpx to call Supabase PostgREST API directly.
+Uses httpx with connection pooling for speed.
 This avoids the pydantic-core Rust compilation issue on Render free tier.
 """
 
 import httpx
 from app.config import SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_KEY
 
-_client: httpx.AsyncClient | None = None
+# Persistent sync client with connection pooling (reuse connections across requests)
+_client: httpx.Client | None = None
+
+
+def _get_client() -> httpx.Client:
+    """Get or create a persistent HTTP client with connection pooling."""
+    global _client
+    if _client is None:
+        _client = httpx.Client(
+            timeout=httpx.Timeout(8.0, connect=3.0),
+            limits=httpx.Limits(
+                max_connections=15,
+                max_keepalive_connections=8,
+                keepalive_expiry=30,
+            ),
+        )
+    return _client
 
 
 def is_configured() -> bool:
@@ -36,7 +52,10 @@ def _service_headers() -> dict:
 
 
 class SupabaseQuery:
-    """Simplified Supabase-like query builder using direct REST calls."""
+    """Simplified Supabase-like query builder using direct REST calls.
+    
+    Uses persistent connection pooling for low latency.
+    """
 
     def __init__(self, table: str, service: bool = True):
         self.table = table
@@ -84,9 +103,9 @@ class SupabaseQuery:
         return f"{_get_rest_url(self.table)}?{qs}"
 
     def execute(self):
-        import httpx as _httpx
+        client = _get_client()
         url = self._build_url()
-        resp = _httpx.get(url, headers=self.headers, timeout=30)
+        resp = client.get(url, headers=self.headers)
         resp.raise_for_status()
         data = resp.json()
         if self._single:
@@ -94,33 +113,33 @@ class SupabaseQuery:
         return QueryResult(data)
 
     def insert(self, row: dict):
-        import httpx as _httpx
+        client = _get_client()
         url = _get_rest_url(self.table)
-        resp = _httpx.post(url, headers={**self.headers, "Prefer": "return=minimal"}, json=row, timeout=30)
+        resp = client.post(url, headers={**self.headers, "Prefer": "return=minimal"}, json=row)
         resp.raise_for_status()
         return QueryResult(None)
 
     def update(self, row: dict):
-        import httpx as _httpx
+        client = _get_client()
         params = {}
         for op, col, val in self._filters:
             if op == "eq":
                 params[col] = f"eq.{val}"
         qs = "&".join(f"{k}={v}" for k, v in params.items())
         url = f"{_get_rest_url(self.table)}?{qs}"
-        resp = _httpx.patch(url, headers={**self.headers, "Prefer": "return=minimal"}, json=row, timeout=30)
+        resp = client.patch(url, headers={**self.headers, "Prefer": "return=minimal"}, json=row)
         resp.raise_for_status()
         return QueryResult(None)
 
     def delete(self):
-        import httpx as _httpx
+        client = _get_client()
         params = {}
         for op, col, val in self._filters:
             if op == "eq":
                 params[col] = f"eq.{val}"
         qs = "&".join(f"{k}={v}" for k, v in params.items())
         url = f"{_get_rest_url(self.table)}?{qs}"
-        resp = _httpx.delete(url, headers=self.headers, timeout=30)
+        resp = client.delete(url, headers=self.headers)
         resp.raise_for_status()
         return QueryResult(None)
 
