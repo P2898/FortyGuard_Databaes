@@ -81,8 +81,8 @@ class RiskAgent(BaseAgent):
         
         for assessment in assessments:
             bucket = assessment.get("risk_bucket", "LOW")
-            site_name = assessment.get("site_name", "Unknown")
-            temp = assessment.get("temperature", 0)
+            site_name = assessment.get("name", assessment.get("site_name", "Unknown"))
+            temp = assessment.get("temperature_c", assessment.get("temperature", 0))
             
             if bucket in risk_summary:
                 risk_summary[bucket].append({
@@ -107,7 +107,7 @@ class RiskAgent(BaseAgent):
             if critical_pct > 0.3:
                 recommendations.append("Portfolio-wide heat alert recommended — >30% of sites are CRITICAL")
         
-        avg_temp = sum(a.get("temperature", 0) for a in assessments) / max(len(assessments), 1)
+        avg_temp = sum(a.get("temperature_c", a.get("temperature", 0)) for a in assessments) / max(len(assessments), 1)
         
         summary = f"Risk analysis complete: {critical_count} CRITICAL, {high_count} HIGH, {len(risk_summary['MEDIUM'])} MEDIUM, {len(risk_summary['LOW'])} LOW across {total} sites. Average temperature: {avg_temp:.1f}°C."
         

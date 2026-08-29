@@ -100,7 +100,7 @@ export const uploadCSV = async (csvText: string) => {
 export const deleteSite = (id: string) => fetchJSON<any>(`/sites/${id}`, { method: 'DELETE' });
 
 // Assessment
-export const assessFleet = (req: any = {}) => fetchJSON<{ sites: Assessment[]; stats: any; assessed_at: string; response_time_ms: number; cached: boolean }>('/assessment/fleet', { method: 'POST', body: JSON.stringify(req) });
+export const assessFleet = (req: any = {}) => fetchJSON<{ sites: Assessment[]; stats: any; assessed_at: string; response_time_ms: number; cached: boolean }>('/assessment/fleet', { method: 'POST', body: JSON.stringify({ site_ids: req.site_ids || [], ...req }) });
 export const getSiteDetail = (id: string, date?: string) => fetchJSON<SiteDetail>(`/assessment/site/${id}${date ? `?date=${date}` : ''}`);
 
 // Heat P&L
@@ -211,6 +211,82 @@ export interface PortfolioAnalysis {
 }
 
 export const analyzePortfolio = () => fetchJSON<PortfolioAnalysis>('/ai/agents/portfolio', { method: 'POST' });
+
+// Predictive Heat Forecast
+export interface ForecastCheckpoint {
+  hours_from_now: number;
+  temp_c: number;
+  heat_index_c: number;
+  risk_bucket: string;
+  risk_color: string;
+  nws_band: string;
+  nws_description: string;
+  confidence: number;
+  confidence_label: string;
+  recommendation: string;
+}
+
+export interface SiteForecast {
+  site_id: string;
+  site_name: string;
+  latitude: number;
+  longitude: number;
+  peak_temp_c: number;
+  peak_heat_index_c: number;
+  peak_risk_bucket: string;
+  peak_hour: number;
+  hours_above_osha: number;
+  hours_above_danger: number;
+  cost_of_inaction: number;
+  reschedule_savings: number;
+  reschedule_recommendation: string;
+  overall_confidence: number;
+  overall_confidence_label: string;
+  checkpoints: ForecastCheckpoint[];
+}
+
+export interface PortfolioForecast {
+  generated_at: string;
+  forecast_horizon_hours: number;
+  total_cost_of_inaction: number;
+  total_reschedule_savings: number;
+  critical_sites_count: number;
+  high_sites_count: number;
+  dollars_flagged_this_quarter: number;
+  sites: SiteForecast[];
+}
+
+export interface ForecastAccuracy {
+  total_forecasts: number;
+  accuracy_percent: number;
+  avg_temp_delta_c: number;
+  risk_match_rate: number;
+  period_days: number;
+  message: string;
+}
+
+export interface DollarsFlagged {
+  total_flagged: number;
+  by_site: Record<string, number>;
+  entry_count: number;
+  quarter: string;
+  message: string;
+}
+
+export const getPortfolioForecast = (siteIds: string[] = []) =>
+  fetchJSON<PortfolioForecast>('/forecast/portfolio', { method: 'POST', body: JSON.stringify({ site_ids: siteIds }) });
+
+export const getSiteForecast = (siteId: string) =>
+  fetchJSON<SiteForecast>(`/forecast/site/${siteId}`);
+
+export const getForecastAccuracy = (days: number = 30) =>
+  fetchJSON<ForecastAccuracy>(`/forecast/accuracy?days=${days}`);
+
+export const getDollarsFlagged = () =>
+  fetchJSON<DollarsFlagged>('/forecast/dollars-flagged');
+
+export const getNwsBands = () =>
+  fetchJSON<any>('/forecast/nws-bands');
 
 // Audio Transcription — with long timeout for Render cold starts
 export const transcribeAudio = async (audioBlob: Blob) => {

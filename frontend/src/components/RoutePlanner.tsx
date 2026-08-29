@@ -34,6 +34,10 @@ export default function RoutePlanner({ initialOriginId, initialDestId, onRoutePl
   const mapInstance = useRef<L.Map | null>(null);
   const layersRef = useRef<L.Layer[]>([]);
 
+  // Read avatar settings from localStorage (set in Settings screen)
+  const avatarGender = localStorage.getItem("shade_avatar_gender") || "default";
+  const avatarOutfit = localStorage.getItem("shade_avatar_outfit") || "default";
+
   const autoPlanDone = useRef(false);
   useEffect(() => {
     getRouteSites().then((s) => {
@@ -165,7 +169,7 @@ export default function RoutePlanner({ initialOriginId, initialDestId, onRoutePl
     if (!m) return;
     const fastestCoords: L.LatLngTuple[] = r.fastest_route.coordinates.map((c) => [c[1], c[0]]);
     const fastestLine = L.polyline(fastestCoords, { color: "#3b82f6", weight: 5, opacity: 0.7, dashArray: "8, 6" }).addTo(m);
-    fastestLine.bindPopup(`<b>Fastest Route</b><br>Avg temp: ${r.fastest_route.avg_temp_c}\u00b0C`);
+    fastestLine.bindPopup(`<b>Fastest Route</b><br>Avg temp: ${r.fastest_route.avg_temp_c}°C`);
     layersRef.current.push(fastestLine);
     const coolestCoords: L.LatLngTuple[] = r.coolest_route.coordinates.map((c) => [c[1], c[0]]);
     const segmentSize = 5;
@@ -190,7 +194,11 @@ export default function RoutePlanner({ initialOriginId, initialDestId, onRoutePl
     const endMarker = L.marker(fastestCoords[fastestCoords.length - 1], { icon: endIcon }).addTo(m).bindPopup(`<b>${r.destination.name}</b>`);
     layersRef.current.push(startMarker, endMarker);
     if (initialOriginId) {
-      const PEGMAN_SVG = `<svg viewBox="0 0 28 44" width="32" height="48" style="filter:drop-shadow(0 3px 6px rgba(0,0,0,0.5))"><path d="M14 46 C14 46 2 28 2 16 A12 12 0 0 1 26 16 C26 28 14 46 14 46Z" fill="#F2994A" stroke="#D97706" stroke-width="1"/><circle cx="14" cy="16" r="10" fill="#FEF3C7" stroke="#F2994A" stroke-width="1"/><circle cx="14" cy="12" r="4" fill="#D97706"/><path d="M9 18 Q14 16 19 18 L17.5 26 Q14 27.5 10.5 26 Z" fill="#D97706"/></svg>`;
+      // Use avatar settings from localStorage
+      const bodyColor = avatarOutfit === "construction" ? "#F59E0B" : avatarOutfit === "delivery" ? "#3B82F6" : "#F2994A";
+      const accentColor = avatarOutfit === "construction" ? "#92400E" : avatarOutfit === "delivery" ? "#1E3A8A" : "#D97706";
+      const helmetColor = avatarOutfit === "construction" ? "#FCD34D" : avatarOutfit === "delivery" ? "#60A5FA" : "#FEF3C7";
+      const PEGMAN_SVG = `<svg viewBox="0 0 28 44" width="32" height="48" style="filter:drop-shadow(0 3px 6px rgba(0,0,0,0.5))"><path d="M14 46 C14 46 2 28 2 16 A12 12 0 0 1 26 16 C26 28 14 46 14 46Z" fill="${bodyColor}" stroke="${accentColor}" stroke-width="1"/><circle cx="14" cy="16" r="10" fill="${helmetColor}" stroke="${bodyColor}" stroke-width="1"/><circle cx="14" cy="12" r="4" fill="${accentColor}"/><path d="M9 18 Q14 16 19 18 L17.5 26 Q14 27.5 10.5 26 Z" fill="${accentColor}"/></svg>`;
       const pegmanIcon = L.divIcon({
         className: "pegman-marker",
         html: PEGMAN_SVG,
@@ -278,7 +286,7 @@ export default function RoutePlanner({ initialOriginId, initialDestId, onRoutePl
             <div style={{ flex: 1, minWidth: 200, background: "linear-gradient(135deg, #064e3b, #065f46)", borderRadius: 12, padding: 20, border: "1px solid #059669" }}>
               <div style={{ fontSize: 13, color: "#6ee7b7" }}>Coolest route</div>
               <div style={{ fontSize: 28, fontWeight: 800, color: "#fff", marginTop: 4 }}>
-                {result.temp_delta_f > 0 ? `${result.temp_delta_f.toFixed(1)}\u00b0F cooler` : "Same temperature"}
+                {result.temp_delta_f > 0 ? `${result.temp_delta_c.toFixed(1)}°C / ${result.temp_delta_f.toFixed(1)}°F cooler` : "Same temperature"}
               </div>
               <div style={{ fontSize: 13, color: "#a7f3d0", marginTop: 4 }}>
                 {result.time_delta_min > 0 ? `${result.time_delta_min} min longer` : "Same travel time"}
@@ -290,11 +298,11 @@ export default function RoutePlanner({ initialOriginId, initialDestId, onRoutePl
             </div>
             <div style={{ flex: 1, minWidth: 140, background: colors.surface, borderRadius: 12, padding: 16, border: `1px solid ${colors.border}` }}>
               <div style={{ fontSize: 12, color: colors.textMuted }}>Fastest avg</div>
-              <div style={{ fontSize: 20, fontWeight: 700, marginTop: 4, color: tempToColor(result.fastest_route.avg_temp_c) }}>{result.fastest_route.avg_temp_c}\u00b0C</div>
+              <div style={{ fontSize: 20, fontWeight: 700, marginTop: 4, color: tempToColor(result.fastest_route.avg_temp_c) }}>{result.fastest_route.avg_temp_c}°C / {((result.fastest_route.avg_temp_c * 9) / 5 + 32).toFixed(1)}°F</div>
             </div>
             <div style={{ flex: 1, minWidth: 140, background: colors.surface, borderRadius: 12, padding: 16, border: `1px solid ${colors.border}` }}>
               <div style={{ fontSize: 12, color: colors.textMuted }}>Coolest avg</div>
-              <div style={{ fontSize: 20, fontWeight: 700, marginTop: 4, color: tempToColor(result.coolest_route.avg_temp_c) }}>{result.coolest_route.avg_temp_c}\u00b0C</div>
+              <div style={{ fontSize: 20, fontWeight: 700, marginTop: 4, color: tempToColor(result.coolest_route.avg_temp_c) }}>{result.coolest_route.avg_temp_c}°C / {((result.coolest_route.avg_temp_c * 9) / 5 + 32).toFixed(1)}°F</div>
             </div>
           </div>
 

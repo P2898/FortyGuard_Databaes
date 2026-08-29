@@ -177,7 +177,8 @@ export function RoutePlayback({
     setHelpfulAnswer(helpful);
     setShowHelpful(false);
     // Write to audit log via backend
-    fetch("/api/routes/helpful", {
+    const BASE = import.meta.env.DEV ? '/api' : 'https://shade-api-gbyb.onrender.com/api';
+    fetch(`${BASE}/routes/helpful`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ helpful }),

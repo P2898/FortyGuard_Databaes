@@ -20,7 +20,8 @@ import KelvinPanel from "./components/KelvinPanel";
 import SettingsScreen from "./components/SettingsScreen";
 import UploadScreen from "./components/UploadScreen";
 import AlertBanner from "./components/AlertBanner";
-import MonitoringDashboard from "./components/MonitoringDashboard";
+
+import ForecastDashboard from "./components/ForecastDashboard";
 import RiskToast, { type RiskChange } from "./components/RiskToast";
 import TempTicker from "./components/TempTicker";
 import { useTheme } from "./lib/theme";
@@ -31,11 +32,11 @@ type View =
   | "site"
   | "route"
   | "heatpl"
+  | "forecast"
   | "reports"
   | "kelvin"
   | "settings"
-  | "setup"
-  | "monitoring";
+  | "setup";
 
 const NAV_ITEMS: [View, string, string][] = [
   ["dashboard", "\uD83D\uDCCA", "Dashboard"],
@@ -44,7 +45,7 @@ const NAV_ITEMS: [View, string, string][] = [
   ["heatpl", "\uD83D\uDCB0", "Heat P&L"],
   ["reports", "\uD83D\uDCC4", "Reports"],
   ["kelvin", "\uD83E\uDD16", "Kelvin"],
-  ["monitoring", "\uD83D\uDCCA", "Monitor"],
+  ["forecast", "\uD83D\uDD2E", "Forecast"],
   ["settings", "\u2699", "Settings"],
 ];
 
@@ -167,6 +168,18 @@ export default function App() {
   const handleDashboardNavigate = (target: string, options?: any) => {
     setView(target as View);
   };
+
+  // Listen for navigate-site events from ForecastDashboard
+  useEffect(() => {
+    const handler = (e: CustomEvent) => {
+      if (e.detail) {
+        setSelectedSite(e.detail);
+        setView("site");
+      }
+    };
+    window.addEventListener("navigate-site", handler as EventListener);
+    return () => window.removeEventListener("navigate-site", handler as EventListener);
+  }, []);
 
   // Get highest risk across all assessments for Kelvin avatar
   const highestRisk = assessments.length
@@ -471,7 +484,7 @@ export default function App() {
               }}
             />
           )}
-          {view === "monitoring" && <MonitoringDashboard />}
+          {view === "forecast" && <ForecastDashboard />}
         </div>
 
         {/* Footer */}

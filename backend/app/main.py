@@ -4,12 +4,29 @@ import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import sites, assessment, heat_pl, kelvin, route, reports, streetview, ai_chat, monitoring, transcribe
+from app.routers import sites, assessment, heat_pl, kelvin, route, reports, streetview, ai_chat, monitoring, transcribe, forecast
+
+async def _prewarm_assessment():
+    """Pre-warm fleet assessment cache on startup so first page load has data."""
+    import time
+    try:
+        # Wait for sites to be seeded
+        await asyncio.sleep(2)
+        from app.routers.assessment import assess_fleet, AssessRequest
+        start = time.time()
+        result = await assess_fleet(AssessRequest())
+        elapsed = int((time.time() - start) * 1000)
+        print(f"[prewarm] Fleet assessment cached: {len(result.sites)} sites in {elapsed}ms")
+    except Exception as e:
+        print(f"[prewarm] Assessment pre-warm failed (non-critical): {e}")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: seed demo sites in background (non-blocking)
     asyncio.create_task(sites.seed_sites_on_startup())
+    # Pre-warm assessment cache (runs after sites are seeded)
+    asyncio.create_task(_prewarm_assessment())
     yield
 
 app = FastAPI(
@@ -39,6 +56,7 @@ app.include_router(streetview.router)
 app.include_router(ai_chat.router)
 app.include_router(monitoring.router)
 app.include_router(transcribe.router)
+app.include_router(forecast.router)
 
 
 @app.get("/api/health")

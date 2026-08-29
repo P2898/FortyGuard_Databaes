@@ -63,21 +63,43 @@ def _get_temperature_at_point(lat, lon, heatmap_tiles):
     return nearest_temp
 
 
+# Simple LRU cache for OSMnx graphs to avoid re-downloading
+_osmnx_cache: dict[str, any] = {}
+_osmnx_cache_max = 10
+
 def _get_osm_segment(origin_lat, origin_lon, dest_lat, dest_lon, network_type="drive", radius_m=8000):
-    """Get route for a short segment using OSMnx."""
+    """Get route for a short segment using OSMnx with caching and timeout."""
+    import signal
+    import threading
+
+    def _timeout_handler():
+        raise TimeoutError("OSMnx download exceeded 15s")
+
+    timer = threading.Timer(15, _timeout_handler)
     try:
+        timer.start()
         import osmnx as ox
         import networkx as nx
 
         center_lat = (origin_lat + dest_lat) / 2
         center_lon = (origin_lon + dest_lon) / 2
 
-        G = ox.graph_from_point(
-            (center_lat, center_lon),
-            dist=radius_m,
-            network_type=network_type,
-            simplify=True,
-        )
+        # Cache key: rounded center + network type
+        cache_key = f"{round(center_lat,2)}_{round(center_lon,2)}_{network_type}_{radius_m}"
+
+        if cache_key in _osmnx_cache:
+            G = _osmnx_cache[cache_key]
+        else:
+            G = ox.graph_from_point(
+                (center_lat, center_lon),
+                dist=radius_m,
+                network_type=network_type,
+                simplify=True,
+            )
+            # Evict oldest if cache full
+            if len(_osmnx_cache) >= _osmnx_cache_max:
+                _osmnx_cache.pop(next(iter(_osmnx_cache)))
+            _osmnx_cache[cache_key] = G
 
         origin_node = ox.distance.nearest_nodes(G, origin_lon, origin_lat)
         dest_node = ox.distance.nearest_nodes(G, dest_lon, dest_lat)
@@ -87,48 +109,53 @@ def _get_osm_segment(origin_lat, origin_lon, dest_lat, dest_lon, network_type="d
         coords = [(G.nodes[n]["x"], G.nodes[n]["y"]) for n in path]
         dist_m = nx.shortest_path_length(G, origin_node, dest_node, weight="length")
 
+        timer.cancel()
         return G, coords, dist_m, origin_node, dest_node
 
     except Exception as e:
+        timer.cancel()
         print(f"[Route] OSMnx segment error: {e}")
         return None, [(origin_lon, origin_lat), (dest_lon, dest_lat)], _haversine_km(origin_lat, origin_lon, dest_lat, dest_lon) * 1000, None, None
 
 
+def _generate_fallback_route(origin_lat, origin_lon, dest_lat, dest_lon):
+    """Generate a smooth fallback route with waypoints when OSMnx is too slow.
+
+    Creates ~30 interpolated waypoints along a direct path.
+    This is much faster than OSMnx (instant) and good enough for heat comparison.
+    """
+    n_points = 30
+    coords = []
+    for i in range(n_points + 1):
+        t = i / n_points
+        lat = origin_lat + t * (dest_lat - origin_lat)
+        lon = origin_lon + t * (dest_lon - origin_lon)
+        coords.append((lon, lat))
+    dist_km = _haversine_km(origin_lat, origin_lon, dest_lat, dest_lon)
+    return None, coords, dist_km, None, None
+
+
 def _get_full_route(origin_lat, origin_lon, dest_lat, dest_lon, network_type="drive"):
-    """Get route, segmenting long distances for OSMnx."""
+    """Get route, segmenting long distances for OSMnx.
+
+    Falls back to smooth interpolated route if OSMnx is too slow (>30s).
+    """
+    import time as _time
     total_km = _haversine_km(origin_lat, origin_lon, dest_lat, dest_lon)
 
-    # For short routes (<15km), use single OSMnx graph
-    if total_km < 15:
-        G, coords, dist_m, _, _ = _get_osm_segment(origin_lat, origin_lon, dest_lat, dest_lon, network_type)
+    # For short routes (<5km), try OSMnx with small radius (usually fast)
+    if total_km < 5:
+        start = _time.time()
+        G, coords, dist_m, _, _ = _get_osm_segment(origin_lat, origin_lon, dest_lat, dest_lon, network_type, radius_m=3000)
+        if _time.time() - start > 10 or G is None:
+            print(f"[Route] OSMnx slow/unavailable ({_time.time()-start:.0f}s), using fallback")
+            return _generate_fallback_route(origin_lat, origin_lon, dest_lat, dest_lon)
         return G, coords, dist_m / 1000, None, None
 
-    # For long routes, interpolate waypoints and stitch OSM segments
-    num_segments = max(2, min(8, int(total_km / 12)))  # ~12km per segment
-    all_coords = []
-    total_dist_km = 0
-
-    for i in range(num_segments):
-        t0 = i / num_segments
-        t1 = (i + 1) / num_segments
-        seg_lat0 = origin_lat + t0 * (dest_lat - origin_lat)
-        seg_lon0 = origin_lon + t0 * (dest_lon - origin_lon)
-        seg_lat1 = origin_lat + t1 * (dest_lat - origin_lat)
-        seg_lon1 = origin_lon + t1 * (dest_lon - origin_lon)
-
-        _, seg_coords, seg_dist_m, _, _ = _get_osm_segment(
-            seg_lat0, seg_lon0, seg_lat1, seg_lon1, network_type, radius_m=10000
-        )
-
-        # Avoid duplicating the junction point
-        if all_coords and seg_coords:
-            all_coords.extend(seg_coords[1:])
-        else:
-            all_coords.extend(seg_coords)
-
-        total_dist_km += seg_dist_m / 1000
-
-    return None, all_coords, total_dist_km, None, None
+    # For routes >5km: use fast fallback
+    # OSMnx graph download is too slow for longer routes
+    print(f"[Route] Route ({total_km:.0f}km), using fast fallback")
+    return _generate_fallback_route(origin_lat, origin_lon, dest_lat, dest_lon)
 
 
 def _is_in_bay_area(lat, lon):
@@ -168,7 +195,7 @@ def _get_heat_coolest_route(fastest_coords, heatmap_tiles):
     for i, (lon, lat) in enumerate(fastest_coords):
         temp = _get_temperature_at_point(lat, lon, heatmap_tiles)
 
-        if temp > 30:
+        if temp > 28:
             # Compute route direction at this point
             prev_lon, prev_lat = fastest_coords[max(0, i - 1)]
             next_lon, next_lat = fastest_coords[min(len(fastest_coords) - 1, i + 1)]
@@ -182,20 +209,21 @@ def _get_heat_coolest_route(fastest_coords, heatmap_tiles):
             perp_x /= mag
             perp_y /= mag
 
-            # Detour amount scales with temperature, capped
-            detour = min(0.03, max(0, (temp - 28) * 0.003))
+            # Detour amount scales with temperature excess — more aggressive
+            # At 30°C: 0.005°, at 35°C: 0.025°, at 40°C: 0.05° (capped)
+            detour = min(0.05, max(0.005, (temp - 28) * 0.005))
 
-            # Try both perpendicular directions, pick the one that stays on land
+            # Try both perpendicular directions, pick the coolest one on land
             best_offset = (0.0, 0.0)
+            best_temp = temp
             for sign in [1, -1]:
-                candidate_lon = lon + perp_x * detour * sign * 0.7 - detour * 0.3
-                candidate_lat = lat + perp_y * detour * sign * 0.7
+                candidate_lon = lon + perp_x * detour * sign
+                candidate_lat = lat + perp_y * detour * sign
                 if _is_in_bay_area(candidate_lat, candidate_lon):
-                    best_offset = (
-                        perp_x * detour * sign * 0.7 - detour * 0.3,
-                        perp_y * detour * sign * 0.7,
-                    )
-                    break
+                    cand_temp = _get_temperature_at_point(candidate_lat, candidate_lon, heatmap_tiles)
+                    if cand_temp < best_temp:
+                        best_temp = cand_temp
+                        best_offset = (perp_x * detour * sign, perp_y * detour * sign)
 
             raw_offsets.append(best_offset)
         else:
@@ -241,8 +269,9 @@ async def plan_route(req: RouteRequest):
     from app.services.fortyguard import submit_heatmap
 
     # Map travel modes to OSMnx network types
-    MODE_MAP = {"drive": "drive", "walk": "walk", "ride": "bike"}
-    travel_mode = MODE_MAP.get(req.travel_mode, "drive")
+    # Use 'drive_service' instead of 'drive' to exclude ferries (which show routes through water)
+    MODE_MAP = {"drive": "drive_service", "walk": "walk", "ride": "bike"}
+    travel_mode = MODE_MAP.get(req.travel_mode, "drive_service")
 
     # Get heatmap data
     padding = max(0.02, _haversine_km(req.origin_lat, req.origin_lon, req.dest_lat, req.dest_lon) / 111 * 0.3)
@@ -290,12 +319,21 @@ async def plan_route(req: RouteRequest):
     temp_delta_c = fastest_temp_c - coolest_temp_c
     temp_delta_f = temp_delta_c * 9 / 5
 
+    # Compute actual coolest route distance (haversine with road factor)
+    coolest_haversine_km = 0
+    for j in range(len(coolest_coords) - 1):
+        coolest_haversine_km += _haversine_km(
+            coolest_coords[j][1], coolest_coords[j][0],
+            coolest_coords[j+1][1], coolest_coords[j+1][0]
+        )
+    # Apply road factor (OSMnx gives road distance; coolest has no graph so use factor)
+    road_factor = fastest_dist_km / max(_haversine_km(req.origin_lat, req.origin_lon, req.dest_lat, req.dest_lon), 0.1)
+    coolest_dist_km = coolest_haversine_km * road_factor
+
     # Time delta
-    SPEED_MAP = {"walk": 5, "bike": 16, "drive": 40}
+    SPEED_MAP = {"walk": 5, "bike": 16, "drive_service": 40}
     avg_speed_kmh = SPEED_MAP.get(travel_mode, 40)
-    # Coolest route is slightly longer due to detours
-    coolest_dist_km = fastest_dist_km * 1.08  # ~8% longer
-    time_delta_min = max(0, int((coolest_dist_km - fastest_dist_km) / avg_speed_kmh * 60))
+    time_delta_min = max(0, int(abs(coolest_dist_km - fastest_dist_km) / avg_speed_kmh * 60))
 
     # Save to Supabase
     if is_configured():

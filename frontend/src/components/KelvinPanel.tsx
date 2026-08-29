@@ -306,9 +306,11 @@ export default function KelvinPanel({ onNavigateRoute }: Props) {
         } catch (e: any) {
           console.error("[voice] Transcription error:", e);
           const errMsg = e?.message || String(e);
-          let userMsg = "⚠️ **Transcription failed.**\n\n";
-          if (errMsg.includes('Failed to fetch') || errMsg.includes('NetworkError')) {
-            userMsg += "The backend server is not reachable. Make sure it's running on localhost:8000.";
+          let userMsg = "⚠️ **Transcription failed.**\n\n";            if (errMsg.includes('Failed to fetch') || errMsg.includes('NetworkError')) {
+              const isDev = import.meta.env.DEV;
+              userMsg += isDev
+                ? "The backend server is not reachable. Make sure it's running on localhost:8000."
+                : "The backend service is currently unavailable. The transcription feature requires the backend to be running — please try again later or type your message instead.";
           } else if (errMsg.includes('timeout') || errMsg.includes('Timeout')) {
             userMsg += "The server took too long to respond. The backend may be starting up — try again in 30 seconds.";
           } else if (errMsg.includes('404') || errMsg.includes('Not Found')) {

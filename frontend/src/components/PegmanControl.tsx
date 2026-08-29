@@ -103,8 +103,7 @@ function buildPopupHTML(
     aqi: number;
   } | null
 ): string {
-  const mapillaryUrl = `https://www.mapillary.com/app/?lat=${lat}&lng=${lng}&z=15`;
-  const copyText = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+
 
   if (!data) {
     return `
@@ -119,10 +118,6 @@ function buildPopupHTML(
         <div style="text-align:center;padding:12px;color:#6b7280;font-size:13px">
           Could not load heat data for this location.
         </div>
-        <a href="${mapillaryUrl}" target="_blank" rel="noopener"
-           style="display:block;text-align:center;padding:8px;background:#0ea5e9;color:#fff;border-radius:8px;text-decoration:none;font-size:12px;font-weight:600">
-          🗺️ View Street Level on Mapillary
-        </a>
       </div>`;
   }
 
@@ -180,17 +175,6 @@ function buildPopupHTML(
         Powered by FortyGuard · 20m resolution · 2m human-height data
       </div>
 
-      <!-- Actions -->
-      <div style="display:flex;gap:6px">
-        <a href="${mapillaryUrl}" target="_blank" rel="noopener"
-           style="flex:1;display:block;text-align:center;padding:8px 12px;background:#0ea5e9;color:#fff;border-radius:8px;text-decoration:none;font-size:12px;font-weight:600">
-          🗺️ Street View
-        </a>
-        <button onclick="navigator.clipboard.writeText('${copyText}').then(()=>this.textContent='✓ Copied')"
-                style="padding:8px 12px;background:#f1f5f9;color:#374151;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;font-size:12px;font-weight:500">
-          📋 Copy
-        </button>
-      </div>
     </div>`;
 }
 

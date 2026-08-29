@@ -7,6 +7,12 @@ interface Props {
   style?: React.CSSProperties;
 }
 
+function renderMarkdown(text: string): string {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\n/g, "<br/>");
+}
+
 export default function TypingText({ text, speed = 18, onComplete, style }: Props) {
   const [displayed, setDisplayed] = useState("");
   const [done, setDone] = useState(false);
@@ -32,9 +38,18 @@ export default function TypingText({ text, speed = 18, onComplete, style }: Prop
     return () => clearInterval(interval);
   }, [text, speed]);
 
+  // Strip markdown for typing animation, then render full HTML when done
+  const strippedForTyping = displayed
+    .replace(/\*\*/g, "")
+    .replace(/\n/g, " ");
+
   return (
     <span style={style}>
-      {displayed}
+      {done ? (
+        <span dangerouslySetInnerHTML={{ __html: renderMarkdown(text) }} />
+      ) : (
+        strippedForTyping
+      )}
       {!done && (
         <span
           style={{
