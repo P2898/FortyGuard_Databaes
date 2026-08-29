@@ -112,7 +112,7 @@ def compute_heat_pl(
 
 
 # SF Fed/Duke productivity factor citation:
-# "Workers lose ~1hr/day above 85°F vs. 76-80°F"
+# "Workers lose ~1hr/day above 85°F vs 76-80°F"
 # Source: Federal Reserve Bank of San Francisco + Duke University research
 # Used conservatively as 0.5 multiplier for per-hour calculations
 PRODUCTIVITY_CITATION = "SF Fed/Duke: Workers lose ~1hr/day above 85°F vs 76-80°F"

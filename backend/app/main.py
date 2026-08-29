@@ -1,9 +1,11 @@
 """Shade — FastAPI backend entry point."""
 
 import asyncio
+import json
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from app.routers import sites, assessment, heat_pl, kelvin, route, reports, streetview, ai_chat, monitoring, transcribe, forecast, heat_prediction
 
 async def _prewarm_assessment():
@@ -29,11 +31,18 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(_prewarm_assessment())
     yield
 
+class UnicodeJSONResponse(JSONResponse):
+    """JSON response that does not escape non-ASCII characters (degree symbols, etc.)."""
+    def render(self, content: any) -> bytes:
+        return json.dumps(content, ensure_ascii=False, allow_nan=False).encode("utf-8")
+
+
 app = FastAPI(
     title="Shade API",
     description="Worker safety, OSHA compliance, and heat-cost platform powered by FortyGuard",
     version="1.0.0",
     lifespan=lifespan,
+    default_response_class=UnicodeJSONResponse,
 )
 
 # CORS — allow frontend origin
