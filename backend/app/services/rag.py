@@ -394,7 +394,7 @@ def _generate_risk_response(query: str, context: List[Dict], site_data: Dict | N
 
     for ctx in context[:1]:
         doc = ctx["document"]
-        answer += f"\n📖 {doc['title']}: {doc['content'].strip()[:150]}...\n"
+        answer += f"\n📖 {doc['title']}: {doc['content'].strip()}\n"
 
     return {
         "answer": answer,
@@ -423,7 +423,7 @@ def _generate_financial_response(query: str, context: List[Dict], site_data: Dic
     answer += "Key financial insights:\n"
     for ctx in context[:2]:
         doc = ctx["document"]
-        answer += f"• {doc['content'].strip()[:200]}...\n"
+        answer += f"• {doc['content'].strip()}\n"
     return {"answer": answer, "confidence": 0.85, "suggestions": ["View Heat P&L for detailed breakdown", "Adjust company policy in Settings"]}
 
 
@@ -431,7 +431,7 @@ def _generate_route_response(query: str, context: List[Dict], site_data: Dict | 
     answer = "🗺️ **Route Planning Advice**\n\nFor heat-safe routing:\n"
     for ctx in context[:2]:
         doc = ctx["document"]
-        answer += f"• {doc['content'].strip()[:200]}...\n"
+        answer += f"• {doc['content'].strip()}\n"
     suggestions = ["Use Route Planner to compare fastest vs coolest routes", "Schedule outdoor travel before 10 AM"]
     result = {"answer": answer, "confidence": 0.82, "suggestions": suggestions}
     # If query mentions specific route, trigger navigation
@@ -444,7 +444,7 @@ def _generate_compliance_response(query: str, context: List[Dict], site_data: Di
     answer = "📋 **OSHA Compliance Information**\n\n"
     for ctx in context[:3]:
         doc = ctx["document"]
-        answer += f"**{doc['title']}**:\n{doc['content'].strip()[:300]}\n\n"
+        answer += f"**{doc['title']}**:\n{doc['content'].strip()}\n\n"
     return {"answer": answer, "confidence": 0.90, "suggestions": ["Generate compliance report from Reports page", "Review Heat Illness Prevention Plan in Settings"]}
 
 
@@ -452,7 +452,7 @@ def _generate_health_response(query: str, context: List[Dict], site_data: Dict |
     answer = "🏥 **Heat-Related Health Information**\n\n⚠️ **Important**: This is informational only. For medical emergencies, call 911.\n\n"
     for ctx in context[:2]:
         doc = ctx["document"]
-        answer += f"• {doc['content'].strip()[:250]}...\n"
+        answer += f"• {doc['content'].strip()}\n"
     return {"answer": answer, "confidence": 0.92, "suggestions": ["Monitor site temperatures for worker safety", "Ensure first aid supplies are available"]}
 
 
@@ -460,7 +460,7 @@ def _generate_threshold_response(query: str, context: List[Dict], site_data: Dic
     answer = "🌡️ **Temperature Thresholds**\n\n"
     for ctx in context[:2]:
         doc = ctx["document"]
-        answer += f"**{doc['title']}**:\n{doc['content'].strip()[:300]}\n\n"
+        answer += f"**{doc['title']}**:\n{doc['content'].strip()}\n\n"
     return {"answer": answer, "confidence": 0.91, "suggestions": ["View site temperatures on Dashboard", "Set up alerts for critical thresholds"]}
 
 
@@ -469,7 +469,7 @@ def _generate_general_response(query: str, context: List[Dict], site_data: Dict 
     for ctx in context[:3]:
         doc = ctx["document"]
         score = ctx["relevance_score"]
-        answer += f"**{doc['title']}** (relevance: {score:.0%}):\n{doc['content'].strip()[:250]}...\n\n"
+        answer += f"**{doc['title']}** (relevance: {score:.0%}):\n{doc['content'].strip()}\n\n"
     if not context:
         answer += "I couldn't find specific information about that topic.\nTry asking about: heat risk, OSHA regulations, costs, routes, compliance, or health effects."
     return {"answer": answer, "confidence": context[0]["relevance_score"] if context else 0.3, "suggestions": ["Ask about heat risk assessment", "Learn about OSHA compliance", "Explore heat cost analysis"]}
@@ -534,7 +534,7 @@ def _generate_route_plan_response(query: str, context: List[Dict], site_data: Di
     # Add route advice from knowledge base
     for ctx in context[:1]:
         doc = ctx["document"]
-        answer += f"\n📖 {doc['title']}: {doc['content'].strip()[:200]}...\n"
+        answer += f"\n📖 {doc['title']}: {doc['content'].strip()}\n"
 
     suggestions = []
     if navigate_to_routes:
@@ -656,7 +656,7 @@ def _generate_heat_illness_prevention_response(query: str, context: List[Dict], 
     # Add knowledge base context
     for ctx in context[:2]:
         doc = ctx["document"]
-        answer += f"\n📖 **{doc['title']}**: {doc['content'].strip()[:200]}...\n"
+        answer += f"\n📖 **{doc['title']}**: {doc['content'].strip()}\n"
 
     answer += "\n\n---\n*For emergencies, call 911. This guidance is based on NIOSH/OSHA standards. Always consult your site safety officer.*"
 
