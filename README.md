@@ -1,4 +1,4 @@
-# 🌡️ Shade — Worker Heat Safety Platform
+# Shade — Worker Heat Safety Platform
 
 > **Turning hyperlocal temperature data into actionable safety intelligence and financial evidence.**
 
