@@ -88,7 +88,7 @@ function ExpandableCard({ line, colors }: { line: any; colors: any }) {
           <div style={{ color: colors.textSecondary }}>{line.formula}</div>
           {line.disclaimer && (
             <div style={{ marginTop: 8, color: colors.textMuted, fontStyle: "italic" }}>
-              {line.disclaimer}
+              {decodeEscaped(line.disclaimer)}
             </div>
           )}
           {line.inputs && Object.keys(line.inputs).length > 0 && (
@@ -105,6 +105,13 @@ function ExpandableCard({ line, colors }: { line: any; colors: any }) {
       )}
     </div>
   );
+}
+
+const DEG = String.fromCharCode(176);
+
+/** Decode any escaped unicode (e.g. \u00b0) from API responses */
+function decodeEscaped(s: string): string {
+  return s.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
 }
 
 export default function HeatPLScreen() {
@@ -219,7 +226,7 @@ export default function HeatPLScreen() {
             </span>
           </div>
           <div style={{ fontSize: 13, color: "#a7f3d0", marginTop: 6 }}>
-            {complianceLine.disclaimer}
+            {decodeEscaped(complianceLine.disclaimer)}
           </div>
         </div>
       )}
@@ -239,7 +246,7 @@ export default function HeatPLScreen() {
       >
         <strong style={{ color: colors.textSecondary }}>What's real vs. estimated:</strong>{" "}
         Hazard pay and delay claim values are computed from your company-entered rates and real FortyGuard risk data.
-        Productivity savings use the SF Fed/Duke research relationship (workers lose ~1hr/day above 85°F vs 76-80°F),
+        Productivity savings use the SF Fed/Duke research relationship (workers lose ~1hr/day above 85{DEG}F vs 76-80{DEG}F),
         labeled as an estimate. Compliance readiness tracks status only, not estimated fine avoidance.
       </div>
     </div>
