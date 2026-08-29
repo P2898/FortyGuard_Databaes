@@ -69,7 +69,7 @@ def compute_heat_pl(
 
     # 2. Productivity $ preserved
     # = SF Fed/Duke relationship × hours avoided × company wage rate
-    # SF Fed/Duke: Workers lose ~1hr/day above 85 degrees F vs 76-80 degrees F
+    # SF Fed/Duke: Workers lose ~1hr/day above 85 °F vs 76-80 °F
     # We use 0.5 hr/productivity-hr as a conservative multiplier
     PRODUCTIVITY_FACTOR = 0.5  # From SF Fed/Duke research
     productivity_saved = hours_avoided * PRODUCTIVITY_FACTOR * policy.wage_rate_per_hr
@@ -78,7 +78,7 @@ def compute_heat_pl(
         amount=round(productivity_saved, 2),
         formula=f"({hours_avoided} hrs avoided) × {PRODUCTIVITY_FACTOR} (SF Fed/Duke factor) × ${policy.wage_rate_per_hr}/hr",
         inputs={"hours_avoided": hours_avoided, "factor": PRODUCTIVITY_FACTOR, "wage_rate": policy.wage_rate_per_hr},
-        disclaimer="Based on SF Fed/Duke finding that workers lose ~1hr/day above 85 degrees F vs 76-80 degrees F. Labeled as estimate.",
+        disclaimer="Based on SF Fed/Duke finding that workers lose ~1hr/day above 85 °F vs 76-80 °F. Labeled as estimate.",
     ))
 
     # 3. Schedule-delay claim value
@@ -112,7 +112,7 @@ def compute_heat_pl(
 
 
 # SF Fed/Duke productivity factor citation:
-# "Workers lose ~1hr/day above 85 degrees F vs 76-80 degrees F"
+# "Workers lose ~1hr/day above 85 °F vs 76-80 °F"
 # Source: Federal Reserve Bank of San Francisco + Duke University research
 # Used conservatively as 0.5 multiplier for per-hour calculations
-PRODUCTIVITY_CITATION = "SF Fed/Duke: Workers lose ~1hr/day above 85 degrees F vs 76-80 degrees F"
+PRODUCTIVITY_CITATION = "SF Fed/Duke: Workers lose ~1hr/day above 85 °F vs 76-80 °F"
