@@ -69,7 +69,7 @@ function ExpandableCard({ line, colors }: { line: any; colors: any }) {
           gap: 4,
         }}
       >
-        Why this number? {expanded ? "\u25B2" : "\u25BC"}
+        Why this number? {"\u25B2"}
       </button>
 
       {expanded && (
@@ -176,7 +176,7 @@ export default function HeatPLScreen() {
           <AnimatedNumber value={heatPL.total_cost} />
         </div>
         <div style={{ fontSize: 13, color: colors.textSecondary, marginTop: 6 }}>
-          {heatPL.site_count} sites assessed {"\u00b7"} {heatPL.date}
+          {heatPL.site_count} sites assessed {"\u00B7"} {heatPL.date}
         </div>
       </div>
 
@@ -239,10 +239,9 @@ export default function HeatPLScreen() {
       >
         <strong style={{ color: colors.textSecondary }}>What's real vs. estimated:</strong>{" "}
         Hazard pay and delay claim values are computed from your company-entered rates and real FortyGuard risk data.
-        Productivity savings use the SF Fed/Duke research relationship (workers lose ~1hr/day above 85{'\u00B0'}F vs 76-80{'\u00B0'}F),
+        Productivity savings use the SF Fed/Duke research relationship (workers lose ~1hr/day above 85°F vs 76-80°F),
         labeled as an estimate. Compliance readiness tracks status only, not estimated fine avoidance.
       </div>
     </div>
   );
 }
-// force redeploy
