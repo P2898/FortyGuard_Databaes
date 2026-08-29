@@ -537,13 +537,15 @@ export default function App() {
           display: "none",
           background: colors.surface,
           borderTop: `1px solid ${colors.border}`,
-          justifyContent: "space-around",
+          justifyContent: "space-evenly",
+          overflowX: "auto",
+          WebkitOverflowScrolling: "touch",
           padding: "6px 0",
           zIndex: 999,
         }}
         className="mobile-nav"
       >
-        {(["dashboard", "map", "route", "heatpl", "kelvin"] as View[]).map(
+        {(["dashboard", "map", "route", "heatpl", "forecast", "kelvin", "settings"] as View[]).map(
           (v) => {
             const item = NAV_ITEMS.find((n) => n[0] === v)!;
             return (
@@ -558,9 +560,10 @@ export default function App() {
                   background: "none",
                   border: "none",
                   color: view === v ? "#c07a28" : "#685f58",
-                  fontSize: 10,
+                  fontSize: 9,
                   cursor: "pointer",
-                  padding: "4px 8px",
+                  padding: "4px 4px",
+                  flex: "0 0 auto",
                 }}
               >
                 <span style={{ fontSize: 18 }}>{item[1]}</span>
