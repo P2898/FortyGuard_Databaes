@@ -72,7 +72,7 @@ export default function SiteDetail({ siteId, onBack }: { siteId: string; onBack:
       <div style={{ background: colors.surface, borderRadius: 12, padding: 20, border: `1px solid ${colors.border}`, marginTop: 16 }}>
         <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, color: colors.text }}>Environmental Parameters</h3>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 12, fontSize: 13 }}>
-          {Object.entries(env_params).map(([k, v]) => (
+          {env_params && Object.entries(env_params).map(([k, v]) => (
             <div key={k}>
               <div style={{ color: colors.textMuted }}>{k.replace(/_/g, " ")}</div>
               <div style={{ fontWeight: 600, marginTop: 2, color: colors.text }}>{String(v)}</div>

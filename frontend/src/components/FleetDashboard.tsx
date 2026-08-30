@@ -316,8 +316,8 @@ export default function FleetDashboard({ sites, assessments, onSelectSite, onNav
                       </span>
                     </Tooltip>
                   </td>
-                  <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: colors.text }}>{s.assessment?.temperature_c?.toFixed(1) || "\u2014"}</td>
-                  <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: colors.text }}>{s.assessment?.heat_index?.toFixed(1) || "\u2014"}</td>
+                  <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: colors.text, whiteSpace: "nowrap" }}>{s.assessment?.temperature_c ? `${s.assessment.temperature_c.toFixed(1)}°C / ${((s.assessment.temperature_c * 9/5) + 32).toFixed(0)}°F` : "\u2014"}</td>
+                  <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: colors.text, whiteSpace: "nowrap" }}>{s.assessment?.heat_index ? `${s.assessment.heat_index.toFixed(1)}°C / ${((s.assessment.heat_index * 9/5) + 32).toFixed(0)}°F` : "\u2014"}</td>
                   <td style={{ padding: "10px 14px", textAlign: "right", color: colors.text }}>{s.assessment?.exceedance_hours?.toFixed(1) || "\u2014"}h</td>
                   <td style={{ padding: "10px 14px", textAlign: "right", color: colors.text }}>{s.assessment?.persistence_hours?.toFixed(1) || "\u2014"}h</td>
                   <td style={{ padding: "10px 14px" }}><button style={{ fontSize: 12, color: colors.accent, background: "none", border: "none", cursor: "pointer" }}>View {"\u2192"}</button></td>

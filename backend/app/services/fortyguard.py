@@ -147,7 +147,7 @@ async def submit_env_params(lat: float, lon: float, date: str, time_str: str, te
     Falls back to demo data if API is unavailable.
     """
     if not FORTYGUARD_API_KEY or not _FORCE_LIVE:
-        return _demo_env_params(lat, lon)
+        return _demo_env_params(lat, lon, temperature)
 
     headers = {"api-key": FORTYGUARD_API_KEY, "Content-Type": "application/json"}
     body = {
@@ -168,23 +168,23 @@ async def submit_env_params(lat: float, lon: float, date: str, time_str: str, te
             data = resp.json()
         except (httpx.RequestError, httpx.HTTPStatusError) as e:
             print(f"[FortyGuard] env_params error: {e}")
-            return _demo_env_params(lat, lon)
+            return _demo_env_params(lat, lon, temperature)
 
         if data.get("error"):
-            return _demo_env_params(lat, lon)
+            return _demo_env_params(lat, lon, temperature)
 
         activity_id = data.get("data", {}).get("activity_id") or data.get("activity_id")
         if not activity_id:
             result_data = data.get("data", data)
             if any(k in json.dumps(result_data) for k in ["heat_index", "humidity"]):
                 return result_data
-            return _demo_env_params(lat, lon)
+            return _demo_env_params(lat, lon, temperature)
 
         try:
             result = await _poll_status(client, activity_id)
             return result
         except (ValueError, TimeoutError):
-            return _demo_env_params(lat, lon)
+            return _demo_env_params(lat, lon, temperature)
 
 
 def _demo_heatmap(polygon: dict, start_date: str, start_time: str) -> dict:
@@ -194,7 +194,9 @@ def _demo_heatmap(polygon: dict, start_date: str, start_time: str) -> dict:
     are much hotter. This mirrors FortyGuard's hyperlocal differentiator.
     """
     import random
-    random.seed(hash((start_date, start_time)))  # Deterministic per time
+    # Use only the hour for the seed so the heatmap is stable for a full hour during demos
+    hour = start_time.split(":")[0] if ":" in start_time else start_time
+    random.seed(hash((start_date, hour)))  # Deterministic per hour
 
     coords = polygon.get("features", [{}])[0].get("geometry", {}).get("coordinates", [[]])[0]
     if coords and len(coords) >= 4:
@@ -277,19 +279,24 @@ def _demo_heatmap(polygon: dict, start_date: str, start_time: str) -> dict:
     }
 
 
-def _demo_env_params(lat: float, lon: float) -> dict:
-    """Generate realistic demo environmental parameters based on location."""
+def _demo_env_params(lat: float, lon: float, provided_temp: float = None) -> dict:
+    """Generate realistic demo environmental parameters based on location and passed temperature."""
     import random
     random.seed(hash((lat, lon)))  # Deterministic per location
 
     is_coastal = lon < -122.15
 
-    if is_coastal:
+    if provided_temp is not None:
+        base_temp = provided_temp
+    elif is_coastal:
         base_temp = 19 + random.random() * 4
+    else:
+        base_temp = 33 + random.random() * 8
+
+    if is_coastal:
         humidity = 65 + random.random() * 20
         solar = 300 + random.random() * 300
     else:
-        base_temp = 33 + random.random() * 8
         humidity = 20 + random.random() * 20
         solar = 600 + random.random() * 400
 

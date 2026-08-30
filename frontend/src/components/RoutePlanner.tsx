@@ -30,16 +30,18 @@ export default function RoutePlanner({ initialOriginId, initialDestId, onRoutePl
 
   // Avatar settings are read from localStorage by getUserPegmanSvg()
 
-  const autoPlanDone = useRef(false);
   useEffect(() => {
-    getRouteSites().then((s) => {
-      setSites(s);
-      if (initialOriginId && initialDestId && !autoPlanDone.current) {
-        autoPlanDone.current = true;
-        setOriginId(initialOriginId);
-        setDestId(initialDestId);
-      }
-    }).catch(console.error);
+    getRouteSites().then(setSites).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    if (initialOriginId && initialDestId) {
+      setOriginId(initialOriginId);
+      setDestId(initialDestId);
+      setResult(null); // Clear previous result to allow recalculation
+    } else {
+      lastAutoPlanKey.current = "";
+    }
   }, [initialOriginId, initialDestId]);
 
   useEffect(() => {

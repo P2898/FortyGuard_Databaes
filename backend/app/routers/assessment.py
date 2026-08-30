@@ -255,12 +255,14 @@ async def get_site_detail(site_id: str, date: str = "", time_str: str = ""):
     # Use location-based temp estimation
     apparent_temp, real_heat_index = _compute_site_temp(site["latitude"], site["longitude"], site["site_id"])
 
-    # Try to get real env params from FortyGuard (non-blocking, falls back to demo)
+    # Try to get env params from FortyGuard for supplementary display (humidity, solar, etc.)
+    # IMPORTANT: Do NOT overwrite apparent_temp or real_heat_index here — those must stay
+    # consistent with the fleet dashboard which uses _compute_site_temp() directly.
     try:
         env = await submit_env_params(site["latitude"], site["longitude"], date_val, time_val, temperature=apparent_temp)
-        real_heat_index = env.get("heat_index_celsius", real_heat_index)
-        if env.get("apparent_temperature_celsius"):
-            apparent_temp = env["apparent_temperature_celsius"]
+        # Override env's temp/heat_index to match our computed values for consistency
+        env["apparent_temperature_celsius"] = apparent_temp
+        env["heat_index_celsius"] = real_heat_index
     except Exception:
         env = {
             "heat_index_celsius": real_heat_index,
@@ -290,7 +292,7 @@ async def get_site_detail(site_id: str, date: str = "", time_str: str = ""):
     max_temp = max(hourly_temps)
     avg_temp = sum(hourly_temps) / len(hourly_temps)
 
-    risk = classify_risk(max_temp, real_heat_index, exceedance, persistence)
+    risk = classify_risk(apparent_temp, real_heat_index, exceedance, persistence)
 
     return {
         "site": site,
