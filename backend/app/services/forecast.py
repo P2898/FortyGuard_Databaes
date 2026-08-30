@@ -134,8 +134,8 @@ def _estimate_forecast_temp(base_temp: float, hour_offset: int, lat: float, lon:
     import random
     import math
 
-    # Current hour
-    now_hour = datetime.now().hour
+    # Current hour (mocked to 14:00 peak)
+    now_hour = 14
     target_hour = (now_hour + hour_offset) % 24
 
     # Diurnal temperature model (sinusoidal)
@@ -258,8 +258,8 @@ def generate_site_forecast(
             )
             reschedule_savings = savings_temp.total_cost
 
-            peak_hour = (datetime.now().hour + peak_checkpoint.hours_from_now) % 24
-            cool_hour = (datetime.now().hour + coolest_checkpoint.hours_from_now) % 24
+            peak_hour = (14 + peak_checkpoint.hours_from_now) % 24
+            cool_hour = (14 + coolest_checkpoint.hours_from_now) % 24
 
             reschedule_recommendation = (
                 f"Move the shift from {peak_hour}:00 ({peak_checkpoint.heat_index_c}°C) "
@@ -291,7 +291,7 @@ def generate_site_forecast(
         peak_temp_c=peak_checkpoint.temp_c,
         peak_heat_index_c=peak_checkpoint.heat_index_c,
         peak_risk_bucket=peak_checkpoint.risk_bucket,
-        peak_hour=(datetime.now().hour + peak_checkpoint.hours_from_now) % 24,
+        peak_hour=(14 + peak_checkpoint.hours_from_now) % 24,
         hours_above_osha=hours_above_osha,
         hours_above_danger=hours_above_danger,
         cost_of_inaction=cost_of_inaction,

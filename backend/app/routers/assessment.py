@@ -102,8 +102,8 @@ def _compute_site_temp(lat: float, lon: float, site_id: str = "") -> tuple[float
     plus a small hour-of-day variation to demonstrate FortyGuard's hyperlocal
     differentiator.
     """
-    # Use deterministic seed based on site_id and hour for consistency
-    seed = hash((site_id or f"{lat}_{lon}", datetime.now().hour))
+    # Use deterministic seed based on site_id and hour for consistency (mocked to 14:00 peak)
+    seed = hash((site_id or f"{lat}_{lon}", 14))
     random.seed(seed)
 
     # Look up the NOAA baseline for this site
@@ -117,8 +117,8 @@ def _compute_site_temp(lat: float, lon: float, site_id: str = "") -> tuple[float
         base_temp = ocean_temp + (lon - ocean_lon) * gradient
         base_temp -= (lat - 37.7) * 0.3
 
-    # Hour-of-day variation: cooler morning/evening, warmer afternoon
-    hour = datetime.now().hour
+    # Hour-of-day variation: cooler morning/evening, warmer afternoon (mocked to 14:00 peak)
+    hour = 14
     if 6 <= hour <= 14:
         hour_mod = (hour - 6) / 8 * 3.0
     elif 14 < hour <= 20:
@@ -165,9 +165,9 @@ async def assess_fleet(req: AssessRequest):
 
         # Generate 12-hour temperature trend for exceedance/persistence
         hourly_temps = []
-        random.seed(hash((site["site_id"], datetime.now().hour)))
+        random.seed(hash((site["site_id"], 14)))
         for h in range(12):
-            hour_of_day = (datetime.now().hour + h) % 24
+            hour_of_day = (14 + h) % 24
             # Temperature curve: cooler morning, peak afternoon, cooler evening
             if 6 <= hour_of_day <= 14:
                 modifier = (hour_of_day - 6) / 8 * 0.6
@@ -274,9 +274,9 @@ async def get_site_detail(site_id: str, date: str = "", time_str: str = ""):
 
     # Generate 12-hour temperature trend
     hourly_temps = []
-    random.seed(hash((site_id, datetime.now().hour)))
+    random.seed(hash((site_id, 14)))
     for h in range(12):
-        hour_of_day = (datetime.now().hour + h) % 24
+        hour_of_day = (14 + h) % 24
         if 6 <= hour_of_day <= 14:
             modifier = (hour_of_day - 6) / 8 * 0.6
         elif 14 < hour_of_day <= 20:
