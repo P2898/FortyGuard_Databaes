@@ -53,8 +53,8 @@ Shade targets: (1) construction/logistics companies managing outdoor workforces 
 
 ## Team — Databaes
 
-- **Bhavya Usha** — Full Stack Development, AI/ML Integration
-- **Gayatri Praneeta Samayamantri** — Full Stack Development, System Architecture
+- **Bhavya Usha** 
+- **Gayatri Praneeta Samayamantri** 
 
 ## Hackathon Submission
 
