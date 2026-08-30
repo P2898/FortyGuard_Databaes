@@ -103,6 +103,7 @@ Every number is expandable to show its exact formula and source citation.
 ### Step 5: Act on It
 - **Fleet Dashboard:** Ranked risk table + heat-colored map — one glance tells you which site is at risk
 - **Route Planner:** Fastest vs. coolest route between sites (shade-aware routing saves 6°F on a SF→Tracy drive)
+- **Pegman Inspector:** Drag-and-drop the pegman anywhere on the map to query hyperlocal, 20m temperature data at any specific street point.
 - **Kelvin AI:** Ask *"Is Tracy safe right now?"* and get a sourced answer in <50ms
 - **Compliance Reports:** One-click OSHA-ready PDF/CSV with risk distribution and exposure logs
 
